@@ -1,0 +1,21 @@
+{
+  "name": "project-overrider",
+  "version": "1.0.0",
+  "description": "Utils for start a project which needs to override another project, without modify directly the files or directory",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "override",
+    "project",
+    "override"
+  ],
+  "author": "Alexandre Mangin",
+  "license": "ISC",
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-copy": "^0.8.2",
+    "grunt-contrib-watch": "^0.6.1"
+  }
+}
