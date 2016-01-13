@@ -1,7 +1,7 @@
 {
-  "name": "project-overrider",
+  "name": "irispass-osjs",
   "version": "1.0.0",
-  "description": "Utils for start a project which needs to override another project, without modify directly the files or directory",
+  "description": "override of osjs virtual desktop",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
