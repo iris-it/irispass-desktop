@@ -20,6 +20,13 @@ La doc est complète et le must c'est d'aller ici et de poser les questions a An
 
 hop hop hop plus rien à faire ici, let's code !
 
+## Install
+
+dans le repertoire d'osjs
+`npm install node-mysql`
+`npm install bcryptjs`
+
+
 ## Overrider
 This project was created in order to override projects witout touching sources manually
 
