@@ -98,7 +98,7 @@
                     if (rows[0]) {
                         var row = rows[0];
                         var settings = {};
-                        var groups = [];
+                        var groups = []; 
 
                         try {
                             settings = JSON.parse(row.settings);
