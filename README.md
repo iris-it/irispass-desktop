@@ -23,28 +23,28 @@ hop hop hop plus rien à faire ici, let's code !
 ## Install
 Cloner Os.Js dans un dossier pour avoir la base du code
 
-`git clone https://github.com/andersevenrud/OS.js-v2.git`
+- `git clone https://github.com/andersevenrud/OS.js-v2.git`
 
 dans le repertoire d'OS.js-v2 lancer ces commandes :
-`npm install `
-`npm install node-mysql bcryptjs`
-`npm install -g supervisor`
-`.\bin\create-windows-symlinks.cmd`
-`grunt watch` et laisser tourner la commande
-`.\bin\win-start-dev.cmd` a lancer dans un autre terminal pour lancer le serveur nodejs
+- `npm install `
+- `npm install node-mysql bcryptjs`
+- `npm install -g supervisor`
+- `.\bin\create-windows-symlinks.cmd`
+- `grunt watch` et laisser tourner la commande
+- `.\bin\win-start-dev.cmd` a lancer dans un autre terminal pour lancer le serveur nodejs
 
 Cloner ce repository
 
-`git clone https://github.com/Bouhnosaure/IrisPass-OsJs.git`
+- `git clone https://github.com/Bouhnosaure/IrisPass-OsJs.git`
 
 Modifier le fichier conf.json pour que l'attribut project, corresponde au chemin vers le repertoire d'oj.js
 lancer ces commandes :
-`npm install`
-`grunt watch` à laisser tourner
+- `npm install`
+- `grunt watch` à laisser tourner
 
 
 Pour de la simple edition de theme sans code js (api / server) modifier ce fichier
-`.\override\src\conf\900-custom.json`
+- `.\override\src\conf\900-custom.json`
 passer de `mysql` à `demo`
 
 
