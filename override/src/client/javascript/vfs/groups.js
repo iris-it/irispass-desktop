@@ -33,6 +33,19 @@
   window.OSjs           = window.OSjs       || {};
   OSjs.VFS              = OSjs.VFS          || {};
   OSjs.VFS.Modules      = OSjs.VFS.Modules  || {};
+
+  /////////////////////////////////////////////////////////////////////////////
+  // API
+  /////////////////////////////////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////////////////////////////
+  // WRAPPERS
+  /////////////////////////////////////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////////////////////////////
+  // EXPORTS
+  /////////////////////////////////////////////////////////////////////////////
+
   OSjs.VFS.Modules.Groups = OSjs.VFS.Modules.Groups || {
     readOnly: false,
     description: 'Groups',
@@ -44,15 +57,13 @@
     unmount: function(cb) {
       OSjs.VFS._NullModule.unmount(cb);
     },
-    mounted: function() {
+    mounted: function () {
       return true;
     },
-    enabled: function() {
+    enabled: function () {
       return true;
     },
-    request: function() {
-
-      //todo ?
+    request: function () {
       // This module uses the same API as public
       OSjs.VFS._NullModule.request.apply(null, arguments);
     }
