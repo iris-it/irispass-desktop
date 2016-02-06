@@ -1,4 +1,4 @@
 {
-  "project": "C:/laragon/www/OS.js-v2",
+  "project": "./osjs",
   "override": "./override"
 }
