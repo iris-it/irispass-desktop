@@ -30,7 +30,7 @@
  * @author  Anders Evenrud <andersevenrud@gmail.com>
  * @licence Simplified BSD License
  */
-(function(mysql, bcrypt) {
+(function (mysql, bcrypt, path_helper) {
   'use strict';
   var connection;
 
@@ -38,17 +38,18 @@
   // USER SESSION ABSTRACTION
   /////////////////////////////////////////////////////////////////////////////
 
-  var APIUser = function() {};
-  APIUser.login = function(login, request, response, callback, config, handler) {
+  var APIUser = function () {
+  };
+  APIUser.login = function (login, request, response, callback, config, handler) {
     console.log('APIUser::login()');
 
     function complete(data) {
       handler.onLogin(request, response, {
         userData: {
-          id : data.id,
-          username : data.username,
-          name : data.name,
-          groups : data.groups
+          id: data.id,
+          username: data.username,
+          name: data.name,
+          groups: data.groups
         },
         userSettings: data.settings
       }, callback);
@@ -64,7 +65,7 @@
       return;
     }
 
-    if ( !login ) {
+    if (!login) {
       invalid();
       return;
     }
@@ -73,26 +74,26 @@
       var q = 'SELECT `id`, `username`, `name`, `groups`, `settings` FROM `osjs_users` WHERE `username` = ? LIMIT 1;';
       var a = [login.username];
 
-      connection.query(q, a, function(err, rows, fields) {
-        if ( err ) {
+      connection.query(q, a, function (err, rows, fields) {
+        if (err) {
           onerror(err);
           return;
         }
 
-        if ( rows[0] ) {
+        if (rows[0]) {
           var row = rows[0];
           var settings = {};
           var groups = [];
 
           try {
             settings = JSON.parse(row.settings);
-          } catch ( e ) {
+          } catch (e) {
             console.log('failed to parse settings', e);
           }
 
           try {
             groups = JSON.parse(row.groups);
-          } catch ( e ) {
+          } catch (e) {
             console.log('failed to parse groups', e);
           }
 
@@ -112,20 +113,20 @@
     var q = 'SELECT `password` FROM `osjs_users` WHERE `username` = ? LIMIT 1;';
     var a = [login.username];
 
-    connection.query(q, a, function(err, rows, fields) {
-      if ( err ) {
+    connection.query(q, a, function (err, rows, fields) {
+      if (err) {
         onerror(err);
         return;
       }
 
-      if ( rows[0] ) {
+      if (rows[0]) {
         var row = rows[0];
         var hash = row.password.replace(/^\$2y(.+)$/i, '\$2a$1');
-        bcrypt.compare(login.password, hash, function(err, res) {
-          if ( err ) {
+        bcrypt.compare(login.password, hash, function (err, res) {
+          if (err) {
             onerror(err);
           } else {
-            if ( res === true ) {
+            if (res === true) {
               getUserInfo();
             } else {
               invalid();
@@ -139,14 +140,14 @@
     });
   };
 
-  APIUser.updateSettings = function(settings, request, response, callback) {
+  APIUser.updateSettings = function (settings, request, response, callback) {
     var uname = request.cookies.get('username');
 
     var q = 'UPDATE `osjs_users` SET `settings` = ? WHERE `username` = ?;';
     var a = [JSON.stringify(settings), uname];
 
-    connection.query(q, a, function(err, rows, fields) {
-      if ( err ) {
+    connection.query(q, a, function (err, rows, fields) {
+      if (err) {
         onerror(err);
         return;
       }
@@ -160,24 +161,24 @@
   /////////////////////////////////////////////////////////////////////////////
 
   var API = {
-    login: function(args, callback, request, response, config, handler) {
-      APIUser.login(args, request, response, function(error, result) {
-        if ( error ) {
+    login: function (args, callback, request, response, config, handler) {
+      APIUser.login(args, request, response, function (error, result) {
+        if (error) {
           callback(error);
           return;
         }
 
-        handler.onLogin(request, response, result, function() {
+        handler.onLogin(request, response, result, function () {
           callback(false, result);
         });
       }, config, handler);
     },
 
-    logout: function(args, callback, request, response, config, handler) {
+    logout: function (args, callback, request, response, config, handler) {
       handler.onLogout(request, response, callback);
     },
 
-    settings: function(args, callback, request, response, config, handler) {
+    settings: function (args, callback, request, response, config, handler) {
       APIUser.updateSettings(args.settings, request, response, callback);
     }
   };
@@ -191,7 +192,7 @@
    * @see handler.Handler
    * @class
    */
-  exports.register = function(instance, DefaultHandler) {
+  exports.register = function (instance, DefaultHandler) {
     function MysqlHandler() {
       DefaultHandler.call(this, instance, API);
     }
@@ -199,12 +200,12 @@
     MysqlHandler.prototype = Object.create(DefaultHandler.prototype);
     MysqlHandler.constructor = DefaultHandler;
 
-    MysqlHandler.prototype.onServerStart = function(cb) {
+    MysqlHandler.prototype.onServerStart = function (cb) {
       var cfg = instance.config.handlers.mysql;
 
-      if ( !connection ) {
+      if (!connection) {
         connection = mysql.createConnection(cfg);
-        connection.connect(function() {
+        connection.connect(function () {
           cb();
         });
       } else {
@@ -212,8 +213,8 @@
       }
     };
 
-    MysqlHandler.prototype.onServerEnd = function(cb) {
-      if ( connection ) {
+    MysqlHandler.prototype.onServerEnd = function (cb) {
+      if (connection) {
         connection.end();
       }
       cb();
@@ -231,23 +232,49 @@
           return;
         }
 
-        function handleUserAuthorizations(method,protocol, path, username, cb) {
 
-          // the user can't delete, rename or create directories in there
-          if(protocol === 'groups' && path.match(/^[\\]?[\/]*[\w\s\u00C0-\u017F!@#\$%\^\&*\)\(+=._-]*$/g) !== null &&['delete','mkdir','move','write'].indexOf(method) !== -1 ){
-              cb('Vous ne pouvez pas supprimer, créer ou renommer de fichiers ici.');
-              return;
+        function handleUserAuthorizations(method, protocol, path, username, cb) {
+
+          console.log(1);
+
+          if (protocol === 'groups' && path.match(/^[\\]?[\/]*[\w\s\u00C0-\u017F!@#\$%\^\&*\)\(+=._-]*$/g) !== null && ['delete', 'mkdir', 'move', 'write'].indexOf(method) !== -1) {
+            cb('Vous ne pouvez pas supprimer, créer ou renommer de fichiers ici.');
+            return;
           }
 
-          console.log('MYSQL HANDER -------------- START');
-          console.log(method);
-          console.log(protocol);
-          console.log(path);
-          console.log(username);
-          console.log('MYSQL HANDER -------------- END');
+          var path_base = path_helper.normalize(path).replace(/\\/g, '/').split("/")[1];
 
-          // or if allowed:
+          var q = 'select `osjs_groups`.* from `osjs_groups` inner join `osjs_group_osjs_user` on `osjs_groups`.`id` = `osjs_group_osjs_user`.`osjs_group_id` where `osjs_group_osjs_user`.`osjs_user_id` = (select `osjs_users`.`id` from `osjs_users` where `osjs_users`.`username` = ?)';
+          var a = [username];
+
+          console.log(2);
+
+          connection.query(q, a, function (err, rows, fields) {
+            if (err) {
+              onerror(err);
+              return;
+            }
+
+            if (rows[0]) {
+              var groups = [''];
+              for (var i = 0, len = rows.length; i < len; i++) {
+                groups.push(rows[i].name);
+              }
+
+              console.log(3);
+
+              if (protocol === 'groups' && groups.indexOf(path_base) === -1) {
+                console.log(4);
+                cb('Dossier privé');
+              } else {
+                console.log(5);
+                cb(false);
+              }
+            }
+          });
+
           cb(false);
+          console.log(6);
         }
 
         var mount = self.instance.vfs.getRealPath(args.path || args.src, self.instance.config, request);
@@ -264,4 +291,4 @@
     return new MysqlHandler();
   };
 
-})(require('mysql'), require('bcryptjs'));
+})(require('mysql'), require('bcryptjs'), require('path'));
