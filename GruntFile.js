@@ -18,23 +18,10 @@ module.exports = function (grunt) {
                 expand: true
             }
         },
-        replace: {
-            mysql_handler: {
-                src: ['<%= conf.project %>/src/server/node/handlers/mysql/handler.js'],
-                overwrite: true,
-                replacements: [{
-                    from: "`users`",
-                    to: "`osjs_users`"
-                }, {
-                    from: "createConnection(MYSQL_CONFIG)",
-                    to: "createConnection(this.instance.config.handlers.mysql.connection)"
-                }]
-            }
-        },
         watch: {
             copy: {
                 files: ['<%= conf.override %>/**'],
-                tasks: ['copy', 'replace']
+                tasks: ['copy']
             }
         }
     });
@@ -42,8 +29,7 @@ module.exports = function (grunt) {
     // Next one would load plugins
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-watch');
-    grunt.loadNpmTasks('grunt-text-replace');
 
     // Here is where we would define our task
-    grunt.registerTask('build', ['copy', "replace"]);
+    grunt.registerTask('build', ['copy']);
 };

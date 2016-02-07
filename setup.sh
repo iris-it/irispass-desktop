@@ -3,10 +3,10 @@
 # We get the latest updates from os.js
 git submodule foreach git pull origin master
 
-# install the dependencies
+# install the dependencies of the project
 npm install
 
-# make the override
+# make the override from the project to os.js
 grunt build
 
 # no comment

@@ -1,0 +1,29 @@
+{
+  "handler": "mysql",
+  "client": {
+    "VFS": {
+      "Mountpoints": {
+        "groups": {
+          "description": "Groups"
+        }
+      }
+    }
+  },
+  "server": {
+    "handlers": {
+      "mysql": {
+        "host": "localhost",
+        "user": "root",
+        "password": "",
+        "database": "irispass"
+      }
+    },
+    "vfs": {
+      "homes":  "C:/laragon/www/VFS/home",
+      "mounts": {
+        "shared": "C:/laragon/www/VFS/public",
+        "groups": "C:/laragon/www/VFS/groups"
+      }
+    }
+  }
+}

@@ -142,7 +142,7 @@
   APIUser.updateSettings = function(settings, request, response, callback) {
     var uname = request.cookies.get('username');
 
-    var q = 'UPDATE `users` SET `settings` = ? WHERE `username` = ?;';
+    var q = 'UPDATE `osjs_users` SET `settings` = ? WHERE `username` = ?;';
     var a = [JSON.stringify(settings), uname];
 
     connection.query(q, a, function(err, rows, fields) {
@@ -217,6 +217,43 @@
         connection.end();
       }
       cb();
+    };
+
+    /*
+     * Here i check the abilities of an user to access a group
+     */
+    MysqlHandler.prototype._checkHasVFSPrivilege = function (request, response, method, args, callback) {
+      var self = this;
+
+      function checkLocationPrivilege(err) {
+        if (err) {
+          callback(err);
+          return;
+        }
+        function checkMyMountpointAgainstMysql(protocol, path, username, cb) {
+          // Check path+protocol towards your database using username
+          // Then return error if not allowed:
+          //cb('You dont have permission to view this directory');
+
+          console.log('MYSQL HANDER -------------- START');
+          console.log(protocol);
+          console.log(path);
+          console.log(username);
+          console.log('MYSQL HANDER -------------- END');
+
+          // or if allowed:
+          cb(false);
+        }
+
+        var mount = self.instance.vfs.getRealPath(args.path || args.src, self.instance.config, request);
+        var mountPointName = mount.protocol.replace(/\:\/\/$/, ''); // ex: "home" if path was home:///something/or/other
+
+        checkMyMountpointAgainstMysql(mountPointName, mount.path, self.getUserName(request, response), function (err) {
+          callback(err, !!err);
+        });
+      }
+
+      DefaultHandler.prototype._checkHasVFSPrivilege.call(this, request, response, method, args, checkLocationPrivilege);
     };
 
     return new MysqlHandler();
