@@ -230,12 +230,17 @@
           callback(err);
           return;
         }
-        function checkMyMountpointAgainstMysql(protocol, path, username, cb) {
-          // Check path+protocol towards your database using username
-          // Then return error if not allowed:
-          //cb('You dont have permission to view this directory');
+
+        function handleUserAuthorizations(method,protocol, path, username, cb) {
+
+          // the user can't delete, rename or create directories in there
+          if(protocol === 'groups' && path.match(/^[\\]?[\/]*[\w\s\u00C0-\u017F!@#\$%\^\&*\)\(+=._-]*$/g) !== null &&['delete','mkdir','move','write'].indexOf(method) !== -1 ){
+              cb('Vous ne pouvez pas supprimer, créer ou renommer de fichiers ici.');
+              return;
+          }
 
           console.log('MYSQL HANDER -------------- START');
+          console.log(method);
           console.log(protocol);
           console.log(path);
           console.log(username);
@@ -248,7 +253,7 @@
         var mount = self.instance.vfs.getRealPath(args.path || args.src, self.instance.config, request);
         var mountPointName = mount.protocol.replace(/\:\/\/$/, ''); // ex: "home" if path was home:///something/or/other
 
-        checkMyMountpointAgainstMysql(mountPointName, mount.path, self.getUserName(request, response), function (err) {
+        handleUserAuthorizations(method, mountPointName, mount.path, self.getUserName(request, response), function (err) {
           callback(err, !!err);
         });
       }
