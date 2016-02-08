@@ -190,6 +190,7 @@
   var AUTHORIZATION = {
 
     getGroupsFromUser: function (username, cb) {
+      //many to many query, to retrieve the list of authorized folders for an user
       var q = 'select `osjs_groups`.* from `osjs_groups` inner join `osjs_group_osjs_user` on `osjs_groups`.`id` = `osjs_group_osjs_user`.`osjs_group_id` where `osjs_group_osjs_user`.`osjs_user_id` = (select `osjs_users`.`id` from `osjs_users` where `osjs_users`.`username` = ?)';
       connection.query(q, [username], function (err, rows, fields) {
         if (err) {
@@ -198,18 +199,33 @@
         }
         var groups = [''];
 
-        if (rows[0]) for (var i = 0, len = rows.length; i < len; i++) groups.push(rows[i].name);
+        if (rows[0]) {
+          rows.forEach(function (group) {
+            groups.push(group.name);
+          });
+        }
 
         cb(false, groups);
       });
     },
 
     checkAgainstProtocolGroups: function (protocol, path, method, cb) {
+      //here i check the fact that an user cant make some action in the base dir, the regex is ugly ( need to rewrite )
       if (protocol === 'groups' && path.match(/^[\\]?[\/]*[\w\s\u00C0-\u017F!@#\$%\^\&*\)\(+=._-]*$/g) !== null && ['delete', 'mkdir', 'move', 'write'].indexOf(method) !== -1) {
+        //you can't delete, create or rename files here (trad)
         cb('Vous ne pouvez pas supprimer, créer ou renommer de fichiers ici.');
       } else {
         cb(false);
       }
+    },
+
+    filterListOfFiles: function (files, groups, cb) {
+      // i filter a list of files against a array of authorized folders
+      var results = files.filter(function (file) {
+        return groups.indexOf(file.filename) !== -1 || file.type == "file"
+      });
+
+      cb(false, results);
     }
 
   };
@@ -221,33 +237,22 @@
 
   var VFS = {
     scandir: function (args, request, callback, config, handler) {
-
-
       handler.instance._vfs.scandir(args, request, function (err, result) {
 
         var username = handler.instance.handler.getUserName(request, null);
 
         AUTHORIZATION.getGroupsFromUser(username, function (err, groups) {
-          if (err) {
-            callback(err);
-            return;
-          }
 
-          //for (var file in result) {
-          //  if (result.hasOwnProperty(file)) {
-          //    if (result[file].type === "dir" && groups.indexOf(result[file].filename) === -1) {
-          //      result.splice(file, 1);
-          //    }
-          //  }
-          //}
-          //
-          //array.filter(function(i) {
-          //  return i != "b"
-          //});.....?????
+          AUTHORIZATION.filterListOfFiles(result, groups, function (err, files) {
+            if (err) {
+              callback(err);
+              return;
+            }
+            callback(err, files);
+          });
 
         });
 
-        callback(err, result);
       }, config, handler);
     }
   };
@@ -302,7 +307,7 @@
           return;
         }
 
-        //definitions
+        //definitions of many variables ( you don't say .. )
         var mount = self.instance.vfs.getRealPath(args.path || args.src, self.instance.config, request);
         var path = mount.path;
         var protocol = mount.protocol.replace(/\:\/\/$/, ''); // ex: "home" if path was home:///something/or/other
@@ -324,6 +329,7 @@
             }
 
             if (protocol === 'groups' && groups.indexOf(path_base) === -1) {
+              // the folder ----- is private (trad)
               callback('Le dossier ' + path_base + ' est privé');
             } else {
               callback(false);
