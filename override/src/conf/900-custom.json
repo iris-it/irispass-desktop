@@ -2,6 +2,7 @@
   "handler": "mysql",
   "client": {
     "VFS": {
+      "MaxUploadSize": 52428800,
       "Mountpoints": {
         "groups": {
           "description": "Groups"
