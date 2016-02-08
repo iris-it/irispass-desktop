@@ -216,6 +216,43 @@
 
 
   /////////////////////////////////////////////////////////////////////////////
+  // VFS
+  /////////////////////////////////////////////////////////////////////////////
+
+  var VFS = {
+    scandir: function (args, request, callback, config, handler) {
+
+
+      handler.instance._vfs.scandir(args, request, function (err, result) {
+
+        var username = handler.instance.handler.getUserName(request, null);
+
+        AUTHORIZATION.getGroupsFromUser(username, function (err, groups) {
+          if (err) {
+            callback(err);
+            return;
+          }
+
+          //for (var file in result) {
+          //  if (result.hasOwnProperty(file)) {
+          //    if (result[file].type === "dir" && groups.indexOf(result[file].filename) === -1) {
+          //      result.splice(file, 1);
+          //    }
+          //  }
+          //}
+          //
+          //array.filter(function(i) {
+          //  return i != "b"
+          //});.....?????
+
+        });
+
+        callback(err, result);
+      }, config, handler);
+    }
+  };
+
+  /////////////////////////////////////////////////////////////////////////////
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
@@ -225,8 +262,9 @@
    * @class
    */
   exports.register = function (instance, DefaultHandler) {
+
     function MysqlHandler() {
-      DefaultHandler.call(this, instance, API);
+      DefaultHandler.call(this, instance, API, VFS);
     }
 
     MysqlHandler.prototype = Object.create(DefaultHandler.prototype);
@@ -258,7 +296,7 @@
     MysqlHandler.prototype._checkHasVFSPrivilege = function (request, response, method, args, callback) {
       var self = this;
 
-      function checkLocationPrivilege(err) {
+      DefaultHandler.prototype._checkHasVFSPrivilege.call(this, request, response, method, args, function (err) {
         if (err) {
           callback(err);
           return;
@@ -292,11 +330,8 @@
             }
 
           });
-
         });
-      }
-
-      DefaultHandler.prototype._checkHasVFSPrivilege.call(this, request, response, method, args, checkLocationPrivilege);
+      });
     };
 
     return new MysqlHandler();
