@@ -184,6 +184,38 @@
   };
 
   /////////////////////////////////////////////////////////////////////////////
+  // USER AUTHORIZATION
+  /////////////////////////////////////////////////////////////////////////////
+
+  var AUTHORIZATION = {
+
+    getGroupsFromUser: function (username, cb) {
+      var q = 'select `osjs_groups`.* from `osjs_groups` inner join `osjs_group_osjs_user` on `osjs_groups`.`id` = `osjs_group_osjs_user`.`osjs_group_id` where `osjs_group_osjs_user`.`osjs_user_id` = (select `osjs_users`.`id` from `osjs_users` where `osjs_users`.`username` = ?)';
+      connection.query(q, [username], function (err, rows, fields) {
+        if (err) {
+          cb(err);
+          return;
+        }
+        var groups = [''];
+
+        if (rows[0]) for (var i = 0, len = rows.length; i < len; i++) groups.push(rows[i].name);
+
+        cb(false, groups);
+      });
+    },
+
+    checkAgainstProtocolGroups: function (protocol, path, method, cb) {
+      if (protocol === 'groups' && path.match(/^[\\]?[\/]*[\w\s\u00C0-\u017F!@#\$%\^\&*\)\(+=._-]*$/g) !== null && ['delete', 'mkdir', 'move', 'write'].indexOf(method) !== -1) {
+        cb('Vous ne pouvez pas supprimer, créer ou renommer de fichiers ici.');
+      } else {
+        cb(false);
+      }
+    }
+
+  };
+
+
+  /////////////////////////////////////////////////////////////////////////////
   // EXPORTS
   /////////////////////////////////////////////////////////////////////////////
 
@@ -232,56 +264,35 @@
           return;
         }
 
+        //definitions
+        var mount = self.instance.vfs.getRealPath(args.path || args.src, self.instance.config, request);
+        var path = mount.path;
+        var protocol = mount.protocol.replace(/\:\/\/$/, ''); // ex: "home" if path was home:///something/or/other
+        var path_base = path_helper.normalize(mount.path).replace(/\\/g, '/').split("/")[1];
+        var username = self.getUserName(request, response);
 
-        function handleUserAuthorizations(method, protocol, path, username, cb) {
-
-          console.log(1);
-
-          if (protocol === 'groups' && path.match(/^[\\]?[\/]*[\w\s\u00C0-\u017F!@#\$%\^\&*\)\(+=._-]*$/g) !== null && ['delete', 'mkdir', 'move', 'write'].indexOf(method) !== -1) {
-            cb('Vous ne pouvez pas supprimer, créer ou renommer de fichiers ici.');
+        //check for actions in the root of the mountpoint
+        AUTHORIZATION.checkAgainstProtocolGroups(protocol, path, method, function (err) {
+          if (err) {
+            callback(err);
             return;
           }
 
-          var path_base = path_helper.normalize(path).replace(/\\/g, '/').split("/")[1];
-
-          var q = 'select `osjs_groups`.* from `osjs_groups` inner join `osjs_group_osjs_user` on `osjs_groups`.`id` = `osjs_group_osjs_user`.`osjs_group_id` where `osjs_group_osjs_user`.`osjs_user_id` = (select `osjs_users`.`id` from `osjs_users` where `osjs_users`.`username` = ?)';
-          var a = [username];
-
-          console.log(2);
-
-          connection.query(q, a, function (err, rows, fields) {
+          //check if user has access to a specified group
+          AUTHORIZATION.getGroupsFromUser(username, function (err, groups) {
             if (err) {
-              onerror(err);
+              callback(err);
               return;
             }
 
-            if (rows[0]) {
-              var groups = [''];
-              for (var i = 0, len = rows.length; i < len; i++) {
-                groups.push(rows[i].name);
-              }
-
-              console.log(3);
-
-              if (protocol === 'groups' && groups.indexOf(path_base) === -1) {
-                console.log(4);
-                cb('Dossier privé');
-              } else {
-                console.log(5);
-                cb(false);
-              }
+            if (protocol === 'groups' && groups.indexOf(path_base) === -1) {
+              callback('Le dossier ' + path_base + ' est privé');
+            } else {
+              callback(false);
             }
+
           });
 
-          cb(false);
-          console.log(6);
-        }
-
-        var mount = self.instance.vfs.getRealPath(args.path || args.src, self.instance.config, request);
-        var mountPointName = mount.protocol.replace(/\:\/\/$/, ''); // ex: "home" if path was home:///something/or/other
-
-        handleUserAuthorizations(method, mountPointName, mount.path, self.getUserName(request, response), function (err) {
-          callback(err, !!err);
         });
       }
 
