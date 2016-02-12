@@ -1,0 +1,12 @@
+{
+  "className":  "ApplicationIrisBrowser",
+  "name":       "IrisBrowser",
+  "mime":       null,
+  "icon":       "categories/applications-system.png",
+  "preload":    [
+    {"src": "main.js", "type": "javascript"}
+  ]
+}
+
+
+
