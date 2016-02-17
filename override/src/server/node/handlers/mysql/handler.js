@@ -201,7 +201,7 @@
 
         if (rows[0]) {
           rows.forEach(function (group) {
-            groups.push(group.name);
+            groups.push(group.realname);
           });
         }
 
@@ -222,7 +222,23 @@
     filterListOfFiles: function (files, groups, cb) {
       // i filter a list of files against a array of authorized folders
       var results = files.filter(function (file) {
-        return groups.indexOf(file.filename) !== -1 || file.type == "file"
+
+        console.log(file);
+
+        if (file.path.replace(/^(.*)\:\/\/(.*)/, '$1') === "groups") {
+          var forward = (file.path.replace(/^(.*)\:\/\/(.*)/, '$2').match(/\//g) || []).length;
+          if (forward === 1) {
+            return groups.indexOf(file.filename) !== -1 || file.type == "file"
+          }
+        }
+
+        return true;
+      });
+
+      results.forEach(function (file) {
+        if (file.path.replace(/^(.*)\:\/\/(.*)/, '$1') === "groups") {
+          file.filename = file.filename.replace(/^[a-z0-9]+-{1}(.*)/g, '$1');
+        }
       });
 
       cb(false, results);
