@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+#initialize and get dependencies
+git pull && git submodule init && git submodule update && git submodule status
+
 # We get the latest updates from os.js
 git submodule foreach git pull origin master
 

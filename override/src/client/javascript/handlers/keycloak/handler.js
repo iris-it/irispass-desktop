@@ -36,147 +36,195 @@
 //
 
 (function (API, Utils, VFS) {
-  'use strict';
+    'use strict';
 
-  window.OSjs = window.OSjs || {};
-  OSjs.Core = OSjs.Core || {};
+    window.OSjs = window.OSjs || {};
+    OSjs.Core = OSjs.Core || {};
 
-  var keycloak = null;
+    var keycloak = null;
 
-  /////////////////////////////////////////////////////////////////////////////
-  // HANDLER
-  /////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////
+    // HANDLER
+    /////////////////////////////////////////////////////////////////////////////
 
-  /**
-   * @extends OSjs.Core._Handler
-   * @class
-   */
-  function KeycloakHandler() {
-    OSjs.Core._Handler.apply(this, arguments);
-  }
+    /**
+     * @extends OSjs.Core._Handler
+     * @class
+     */
+    function KeycloakHandler() {
+        OSjs.Core._Handler.apply(this, arguments);
+    }
 
-  KeycloakHandler.prototype = Object.create(OSjs.Core._Handler.prototype);
-  KeycloakHandler.constructor = OSjs.Core._Handler;
+    KeycloakHandler.prototype = Object.create(OSjs.Core._Handler.prototype);
+    KeycloakHandler.constructor = OSjs.Core._Handler;
 
-  OSjs.Core._Handler.use.defaults(KeycloakHandler);
+    OSjs.Core._Handler.use.defaults(KeycloakHandler);
 
-  /**
-   * Default login method
-   *
-   * @param   String    username      Login username
-   * @param   String    password      Login password
-   * @param   Function  callback      Callback function => fn(err)
-   *
-   * @return  void
-   *
-   * @method  _Handler::login()
-   */
-  KeycloakHandler.prototype.login = function (callback) {
-    console.info('Handler::login()');
+    /**
+     * Calls Normal "Backend"
+     *
+     * @see _Handler::_callAPI()
+     * @see _Handler::_callVFS()
+     * @method  _Handler::__callXHR()
+     */
+    KeycloakHandler.prototype.__callXHR = function (url, args, options, cbSuccess, cbError) {
+        var self = this;
 
-    var opts = {userdata: keycloak.idTokenParsed};
-    this.callAPI('login', opts, function (response) {
-      if (response.result) { // This contains an object with user data
-        callback(false, response.result);
-      } else {
-        var error = response.error || API._('ERR_LOGIN_INVALID');
-        callback(API._('ERR_LOGIN_FMT', error), false);
-      }
-    }, function (error) {
-      callback(API._('ERR_LOGIN_FMT', error), false);
-    });
-  };
+        cbError = cbError || function () {
+                console.warn('Handler::__callXHR()', 'error', arguments);
+            };
 
+        var bearer = {
+            'Authorization': localStorage.getItem('token')
+        };
 
-  /**
-   * Called when login() is finished
-   *
-   * @param   Object    data          JSON Data from login action (userData, userSettings, etc)
-   * @param   Function  callback      Callback function
-   *
-   * @return  void
-   *
-   * @method  _Handler::onLogin()
-   */
-  KeycloakHandler.prototype.onLogin = function (callback) {
-    callback = callback || function () {
-      };
+        var data = {
+            url: url,
+            requestHeaders: bearer,
+            method: 'POST',
+            json: true,
+            body: args,
+            onsuccess: function (/*response, request, url*/) {
+                cbSuccess.apply(self, arguments);
+            },
+            onerror: function (/*error, response, request, url*/) {
+                cbError.apply(self, arguments);
+            }
+        };
 
-    localStorage.setItem('token', keycloak.token);
-    localStorage.setItem('id_token', keycloak.idToken);
-    localStorage.setItem('user_id', keycloak.subject);
-    localStorage.setItem('user_data', keycloak.idTokenParsed);
+        if (options) {
+            Object.keys(options).forEach(function (key) {
+                data[key] = options[key];
+            });
+        }
 
-    this.userData = {
-      id: keycloak.subject,
-      username: keycloak.idTokenParsed.preferred_username,
-      name: keycloak.idTokenParsed.given_name,
-      groups: keycloak.resourceAccess.osjs.roles
+        Utils.ajax(data);
+
+        return true;
     };
 
-    /*
-     * Request USER SETTINGS AND LOCALE (to my api)
+
+    /**
+     * Default login method
+     *
+     * @param   Function  callback      Callback function => fn(err)
+     *
+     * @return  void
+     *
+     * @method  _Handler::login()
      */
-    var userSettings = null;
-    if (!userSettings || userSettings instanceof Array) {
-      userSettings = {};
-    }
-
-    document.getElementById('LoadingScreen').style.display = 'block';
-
-    API.setLocale("fr_FR");
-
-    OSjs.Core.getSettingsManager().init(userSettings);
-
-    // if (data.blacklistedPackages) {
-    //   OSjs.Core.getPackageManager().setBlacklist(data.blacklistedPackages);
-    // }
-
-    callback();
-  };
-
-  /**
-   * Initializes login screen
-   *
-   * @method  _Handler::initLoginScreen()
-   */
-  KeycloakHandler.prototype.initLoginScreen = function (callback) {
-    var self = this;
-
-    keycloak = Keycloak('/keycloak.json');
-
-    var container = document.getElementById('Login');
-
-    if (!container) {
-      throw new Error('Could not find Login Form Container');
-    }
-
-
-    keycloak.init({onLoad: 'login-required', flow: 'implicit'}).success(function () {
-      console.debug('Handlers::init()', 'login response');
-
-      container.parentNode.removeChild(container);
-
-      self.login(function () {
-        self.onLogin(function () {
-          callback();
+    KeycloakHandler.prototype.login = function (callback) {
+        console.info('Handler::login()');
+        this.callAPI('login', {}, function (response) {
+            if (response.result) { // This contains an object with user data
+                callback(false, response.result);
+            } else {
+                var error = response.error || API._('ERR_LOGIN_INVALID');
+                callback(API._('ERR_LOGIN_FMT', error), false);
+            }
+        }, function (error) {
+            callback(API._('ERR_LOGIN_FMT', error), false);
         });
-      });
+    };
 
 
-    }).error(function (error) {
-      alert(error);
+    /**
+     * Called when login() is finished
+     *
+     * @param   Object    data          JSON Data from login action (userData, userSettings, etc)
+     * @param   Function  callback      Callback function
+     *
+     * @return  void
+     *
+     * @method  _Handler::onLogin()
+     */
+    KeycloakHandler.prototype.onLogin = function (data, callback) {
+        callback = callback || function () {
+            };
+
+        var userSettings = data.userSettings;
+        if (!userSettings || userSettings instanceof Array) {
+            userSettings = {};
+        }
+
+        this.userData = data.userData;
+
+        // Ensure we get the user-selected locale configured from WM
+        function getUserLocale() {
+            var curLocale = Utils.getUserLocale() || API.getConfig('Locale');
+            var result = OSjs.Core.getSettingsManager().get('CoreWM');
+            if (!result) {
+                try {
+                    result = userSettings.CoreWM;
+                } catch (e) {
+                }
+            }
+            return result ? (result.language || curLocale) : curLocale;
+        }
+
+        document.getElementById('LoadingScreen').style.display = 'block';
+
+        API.setLocale(getUserLocale());
+        OSjs.Core.getSettingsManager().init(userSettings);
+
+        if (data.blacklistedPackages) {
+            OSjs.Core.getPackageManager().setBlacklist(data.blacklistedPackages);
+        }
+
+        callback();
+    };
+
+    /**
+     * Initializes login screen
+     *
+     * @method  _Handler::initLoginScreen()
+     */
+    KeycloakHandler.prototype.initLoginScreen = function (callback) {
+        var self = this;
+
+        keycloak = Keycloak('/keycloak.json');
+
+        var container = document.getElementById('Login');
+
+        if (!container) {
+            throw new Error('Could not find Login Form Container');
+        }
+
+        keycloak.init({onLoad: 'login-required', flow: 'implicit'}).success(function () {
+            console.debug('Handlers::init()', 'login response');
+
+            console.debug('Handlers::init()', 'store token');
+            localStorage.setItem('token', keycloak.token);
+
+            container.parentNode.removeChild(container);
+
+            self.login(function (error, result) {
+                self.onLogin(result, function () {
+                    callback();
+                });
+            });
+
+        }).error(function (error) {
+            alert(error);
+        });
+
+        container.style.display = 'block';
+
+    };
+
+    OSjs.API.addHook('onShutdown', function () {
+        var config = API.getConfig();
+
+        localStorage.clear();
+
+        window.location = config.auth_server + "protocol/openid-connect/logout?redirect_uri=" + encodeURIComponent(config.osjs_server);
     });
 
-    container.style.display = 'block';
 
-  };
+    /////////////////////////////////////////////////////////////////////////////
+    // EXPORTS
+    /////////////////////////////////////////////////////////////////////////////
 
-
-  /////////////////////////////////////////////////////////////////////////////
-  // EXPORTS
-  /////////////////////////////////////////////////////////////////////////////
-
-  OSjs.Core.Handler = KeycloakHandler;
+    OSjs.Core.Handler = KeycloakHandler;
 
 })(OSjs.API, OSjs.Utils, OSjs.VFS);
