@@ -1,0 +1,12 @@
+{
+  "className":  "ApplicationCRM",
+  "name":       "CRM",
+  "mime":       null,
+  "icon":       "categories/applications-system.png",
+  "preload":    [
+    {"src": "main.js", "type": "javascript"}
+  ]
+}
+
+
+

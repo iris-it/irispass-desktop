@@ -1,5 +1,5 @@
 {
-  "handler": "mysql",
+  "handler": "keycloak",
   "client": {
     "VFS": {
       "MaxUploadSize": 52428800,

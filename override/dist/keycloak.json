@@ -1,0 +1,9 @@
+{
+  "realm": "irispass",
+  "realm-public-key": "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDIuJQfcrHTRaPMu8LVqFM8Kyrg\nvNXDhheBNbUgJZIi46MDe/6z1YsragRpISbC1rklKRJUuSJcuOg6Ji/AyMxb/xq3\nBUPq95aSFUYXfbTIs9JBZTaK5GWHnzbI8XxRCXWGBAq63oOWDzuwkrhp0IPTmV0y\nRDwTxed2M3yXfXu5JwIDAQAB\n-----END PUBLIC KEY-----\n",
+  "auth-server-url": "http://c64.ovh/auth",
+  "ssl-required": "none",
+  "resource": "osjs",
+  "public-client": true,
+  "use-resource-role-mappings": true
+}
