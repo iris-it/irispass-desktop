@@ -58,11 +58,11 @@
     var APIUser = function () {
     };
 
-    APIUser.login = function (login, request, response, callback, config, handler) {
+    APIUser.login = function (server, login, callback) {
 
         console.log('APIUser::login()');
 
-        var token = request.headers.authorization;
+        var token = server.request.headers.authorization;
 
         var args = {
             headers: {
@@ -82,7 +82,7 @@
 
             var settings = JSON.parse(data.settings);
 
-            handler.onLogin(request, response, {
+            server.handler.onLogin(server, {
                 userData: {
                     id: data.sub,
                     username: data.preferred_username,
@@ -94,9 +94,9 @@
         });
     };
 
-    APIUser.prototype.onLogout = function (request, response, callback) {
+    APIUser.prototype.onLogout = function (server, callback) {
 
-        var token = request.headers.authorization;
+        var token = server.request.headers.authorization;
 
         var args = {
             headers: {
@@ -105,7 +105,7 @@
             }
         };
 
-        this.setUserData(request, response, null, function () {
+        this.setUserData(server, null, function () {
 
             rest.get(auth_server + "protocol/openid-connect/logout", args, function (data, response) {
                 callback(false, true);
@@ -114,11 +114,11 @@
         });
     };
 
-    APIUser.updateSettings = function (settings, request, response, callback) {
+    APIUser.updateSettings = function (server, settings, callback) {
 
         console.log('APIUser::updateSettings()');
 
-        var token = request.headers.authorization;
+        var token = server.request.headers.authorization;
 
         var args = {
             headers: {
@@ -147,25 +147,25 @@
     /////////////////////////////////////////////////////////////////////////////
 
     var API = {
-        login: function (args, callback, request, response, config, handler) {
-            APIUser.login(args, request, response, function (error, result) {
+        login: function (server, args, callback) {
+            APIUser.login(server, args, function (error, result) {
                 if (error) {
                     callback(error);
                     return;
                 }
 
-                handler.onLogin(request, response, result, function () {
+                server.handler.onLogin(server, result, function () {
                     callback(false, result);
                 });
-            }, config, handler);
+            });
         },
 
-        logout: function (args, callback, request, response, config, handler) {
-            APIUser.onLogout(request, response, callback);
+        logout: function (server, args, callback) {
+            server.handler.onLogout(server, callback);
         },
 
-        settings: function (args, callback, request, response, config, handler) {
-            APIUser.updateSettings(args.settings, request, response, callback);
+        settings: function (server, args, callback) {
+            APIUser.updateSettings(server, args.settings, callback);
         }
     };
 
@@ -173,7 +173,7 @@
     // VFS
     /////////////////////////////////////////////////////////////////////////////
 
-    var VFS = {}; 
+    var VFS = {};
 
     /////////////////////////////////////////////////////////////////////////////
     // EXPORTS
@@ -204,24 +204,24 @@
          * By default OS.js will check src/conf for group permissions.
          * This overrides and leaves no checks (full access)
          */
-        KeycloaklHandler.prototype.checkAPIPrivilege = function (request, response, privilege, callback) {
-            this._checkHasSession(request, response, callback);
+        KeycloaklHandler.prototype.checkAPIPrivilege = function (server, privilege, callback) {
+            this._checkHasSession(server, callback);
         };
 
         /**
          * By default OS.js will check src/conf for group permissions.
          * This overrides and leaves no checks (full access)
          */
-        KeycloaklHandler.prototype.checkVFSPrivilege = function (request, response, path, args, callback) {
-            this._checkHasSession(request, response, callback);
+        KeycloaklHandler.prototype.checkVFSPrivilege = function (server, method, args, callback) {
+            this._checkHasSession(server, callback);
         };
 
         /**
          * By default OS.js will check src/conf for group permissions.
          * This overrides and leaves no checks (full access)
          */
-        KeycloaklHandler.prototype.checkPackagePrivilege = function (request, response, packageName, callback) {
-            this._checkHasSession(request, response, callback);
+        KeycloaklHandler.prototype.checkPackagePrivilege = function (server, packageName, callback) {
+            this._checkHasSession(server, callback);
         };
 
         return new KeycloaklHandler();

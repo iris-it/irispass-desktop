@@ -16,12 +16,18 @@ module.exports = function (grunt) {
                 src: ['**'],
                 dest: '<%= conf.project %>',
                 expand: true
+            },
+            dev: {
+                cwd: '<%= conf.override %>/dist-dev',
+                src: ['**'],
+                dest: '<%= conf.override %>/dist',
+                expand: true
             }
         },
         watch: {
             copy: {
                 files: ['<%= conf.override %>/**'],
-                tasks: ['copy']
+                tasks: ['copy:main', 'copy:dev']
             }
         }
     });

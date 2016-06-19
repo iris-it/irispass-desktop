@@ -162,8 +162,6 @@
             return result ? (result.language || curLocale) : curLocale;
         }
 
-        document.getElementById('LoadingScreen').style.display = 'block';
-
         API.setLocale(getUserLocale());
         OSjs.Core.getSettingsManager().init(userSettings);
 
@@ -184,19 +182,17 @@
 
         keycloak = Keycloak('/keycloak.json');
 
-        var container = document.getElementById('Login');
-
-        if (!container) {
-            throw new Error('Could not find Login Form Container');
-        }
+        document.getElementById('LoadingScreen').style.display = 'block'; 
 
         keycloak.init({onLoad: 'login-required', flow: 'implicit'}).success(function () {
             console.debug('Handlers::init()', 'login response');
 
+            if (keycloak.resourceAccess.osjs === undefined) {
+                callback('Accès non autorisé - Permission manquante', false);
+            }
+
             console.debug('Handlers::init()', 'store token');
             localStorage.setItem('token', keycloak.token);
-
-            container.parentNode.removeChild(container);
 
             self.login(function (error, result) {
                 self.onLogin(result, function () {
@@ -207,8 +203,6 @@
         }).error(function (error) {
             alert(error);
         });
-
-        container.style.display = 'block';
 
     };
 

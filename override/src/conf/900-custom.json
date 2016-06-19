@@ -12,7 +12,7 @@
         "auth_server": "http://c64.ovh/auth/realms/irispass/",
         "api_server": "http://irispass-desktop.dev/",
         "osjs_server": "http://localhost:8000"
-    },
+    }, 
     "server": {
         "tmpdir": "C:/laragon/www/VFS/tmp",
         "handlers": {

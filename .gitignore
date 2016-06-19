@@ -1,3 +1,4 @@
 /osjs
 /node_modules
+/override/dist
 .idea
