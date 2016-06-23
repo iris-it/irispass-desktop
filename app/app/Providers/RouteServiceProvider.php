@@ -19,7 +19,7 @@ class RouteServiceProvider extends ServiceProvider
     /**
      * Define your route model bindings, pattern filters, etc.
      *
-     * @param  \Illuminate\Routing\Router  $router
+     * @param  \Illuminate\Routing\Router $router
      * @return void
      */
     public function boot(Router $router)
@@ -32,11 +32,12 @@ class RouteServiceProvider extends ServiceProvider
     /**
      * Define the routes for the application.
      *
-     * @param  \Illuminate\Routing\Router  $router
+     * @param  \Illuminate\Routing\Router $router
      * @return void
      */
     public function map(Router $router)
     {
+        $this->mapApiRoutes($router);
         $this->mapWebRoutes($router);
 
         //
@@ -47,15 +48,28 @@ class RouteServiceProvider extends ServiceProvider
      *
      * These routes all receive session state, CSRF protection, etc.
      *
-     * @param  \Illuminate\Routing\Router  $router
+     * @param  \Illuminate\Routing\Router $router
      * @return void
      */
     protected function mapWebRoutes(Router $router)
     {
-        $router->group([
-            'namespace' => $this->namespace, 'middleware' => 'web',
-        ], function ($router) {
-            require app_path('Http/routes.php');
+        $router->group(['namespace' => 'App\Http\Controllers\App', 'middleware' => 'web',], function ($router) {
+            require app_path('Http/app_routes.php');
+        });
+    }
+
+    /**
+     * Define the "web" routes for the application.
+     *
+     * These routes all receive session state, CSRF protection, etc.
+     *
+     * @param  \Illuminate\Routing\Router $router
+     * @return void
+     */
+    protected function mapApiRoutes(Router $router)
+    {
+        $router->group(['namespace' => 'App\Http\Controllers\Api', 'middleware' => 'api',], function ($router) {
+            require app_path('Http/api_routes.php');
         });
     }
 }

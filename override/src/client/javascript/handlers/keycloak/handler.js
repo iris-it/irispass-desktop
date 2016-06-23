@@ -182,7 +182,7 @@
 
         keycloak = Keycloak('/keycloak.json');
 
-        document.getElementById('LoadingScreen').style.display = 'block'; 
+        document.getElementById('LoadingScreen').style.display = 'block';
 
         keycloak.init({onLoad: 'login-required', flow: 'implicit'}).success(function () {
             console.debug('Handlers::init()', 'login response');
@@ -206,12 +206,22 @@
 
     };
 
+
+    KeycloakHandler.prototype.onVFSRequest = function (vfsModule, vfsMethod, vfsArguments, callback) {
+
+        //console.log('VFS :: ' + vfsModule + ' :: ' + vfsMethod + ' :: ' + vfsArguments);
+
+        callback();
+    };
+
     OSjs.API.addHook('onShutdown', function () {
+        
         var config = API.getConfig();
 
         localStorage.clear();
 
         window.location = config.auth_server + "protocol/openid-connect/logout?redirect_uri=" + encodeURIComponent(config.osjs_server);
+        
     });
 
 

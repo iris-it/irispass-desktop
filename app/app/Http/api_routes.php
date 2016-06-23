@@ -7,14 +7,13 @@
 |
 |
 */
-
 $api = app('Dingo\Api\Routing\Router');
 
 $api->version('v1', function ($api) {
+
     $api->group(['namespace' => 'App\Http\Controllers\Api'], function ($api) {
 
-
-        $api->get('/', function () {
+        $api->get('/info', function () {
             return [
                 'api' => 'v-0.0.1',
                 'provider' => 'irispass'

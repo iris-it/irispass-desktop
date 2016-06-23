@@ -17,6 +17,10 @@ class UserController extends Controller
     public function getCurrentUser(Request $request)
     {
 
+        if (!$request->bearerToken()) {
+            return $this->response->errorUnauthorized();
+        }
+
         $payload = JWT::decode($request->bearerToken(), config('jwt.keys.public'), array('RS256'));
 
         $data = [

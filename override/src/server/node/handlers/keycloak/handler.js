@@ -82,35 +82,24 @@
 
             var settings = JSON.parse(data.settings);
 
+            console.log({
+                userData: {
+                    id: data.sub,
+                    username: data.preferred_username,
+                    name: data.given_name,
+                    groups: groups.osjs.roles
+                }
+            });
+
             server.handler.onLogin(server, {
                 userData: {
                     id: data.sub,
                     username: data.preferred_username,
                     name: data.given_name,
-                    groups: groups.osjs
+                    groups: groups.osjs.roles
                 },
                 userSettings: settings
             }, callback);
-        });
-    };
-
-    APIUser.prototype.onLogout = function (server, callback) {
-
-        var token = server.request.headers.authorization;
-
-        var args = {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            }
-        };
-
-        this.setUserData(server, null, function () {
-
-            rest.get(auth_server + "protocol/openid-connect/logout", args, function (data, response) {
-                callback(false, true);
-            });
-
         });
     };
 
@@ -160,10 +149,6 @@
             });
         },
 
-        logout: function (server, args, callback) {
-            server.handler.onLogout(server, callback);
-        },
-
         settings: function (server, args, callback) {
             APIUser.updateSettings(server, args.settings, callback);
         }
@@ -173,7 +158,13 @@
     // VFS
     /////////////////////////////////////////////////////////////////////////////
 
-    var VFS = {};
+    var VFS = {
+        scandir: function (server, args, callback) {
+            server.handler.instance._vfs.scandir(server, args, function (err, result) {
+                callback(err, result);
+            });
+        }
+    };
 
     /////////////////////////////////////////////////////////////////////////////
     // EXPORTS
@@ -185,11 +176,13 @@
      * @class
      */
     exports.register = function (instance, DefaultHandler) {
+
         function KeycloaklHandler() {
             DefaultHandler.call(this, instance, API, VFS);
         }
 
         KeycloaklHandler.prototype = Object.create(DefaultHandler.prototype);
+
         KeycloaklHandler.constructor = DefaultHandler;
 
         KeycloaklHandler.prototype.onServerStart = function (cb) {
@@ -199,6 +192,7 @@
             osjs_server = cfg.osjs_server;
             cb();
         };
+
 
         /**
          * By default OS.js will check src/conf for group permissions.

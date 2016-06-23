@@ -1,38 +1,23 @@
 {
     "handler": "keycloak",
     "client": {
-        "VFS": {
-            "MaxUploadSize": 52428800,
-            "Mountpoints": {
-                "groups": {
-                    "description": "Groups"
-                }
-            }
-        },
         "auth_server": "http://c64.ovh/auth/realms/irispass/",
-        "api_server": "http://irispass-desktop.dev/",
+        "api_server": "http://irispass-desktop.dev/api/",
         "osjs_server": "http://localhost:8000"
-    }, 
+    },
     "server": {
         "tmpdir": "C:/laragon/www/VFS/tmp",
         "handlers": {
-            "mysql": {
-                "host": "localhost",
-                "user": "root",
-                "password": "",
-                "database": "irispass"
-            },
             "keycloak": {
                 "auth_server": "http://c64.ovh/auth/realms/irispass/",
-                "api_server": "http://irispass-desktop.dev/",
+                "api_server": "http://irispass-desktop.dev/api/",
                 "osjs_server": "http://localhost:8000"
             }
         },
         "vfs": {
             "homes": "C:/laragon/www/VFS/home",
             "mounts": {
-                "shared": "C:/laragon/www/VFS/public",
-                "groups": "C:/laragon/www/VFS/groups"
+                "shared": "C:/laragon/www/VFS/public"
             }
         }
     }
