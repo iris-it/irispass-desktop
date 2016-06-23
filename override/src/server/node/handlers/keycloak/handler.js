@@ -66,7 +66,6 @@
 
         var args = {
             headers: {
-                "Content-Type": "application/json",
                 "Authorization": "Bearer " + token
             }
         };
@@ -81,15 +80,6 @@
             var groups = JSON.parse(data.resource_access);
 
             var settings = JSON.parse(data.settings);
-
-            console.log({
-                userData: {
-                    id: data.sub,
-                    username: data.preferred_username,
-                    name: data.given_name,
-                    groups: groups.osjs.roles
-                }
-            });
 
             server.handler.onLogin(server, {
                 userData: {

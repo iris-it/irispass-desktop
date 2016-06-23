@@ -2,7 +2,7 @@
     "handler": "keycloak",
     "client": {
         "auth_server": "http://c64.ovh/auth/realms/irispass/",
-        "api_server": "http://irispass-desktop.dev/api/",
+        "api_server": "http://irispass-api.dev/",
         "osjs_server": "http://localhost:8000"
     },
     "server": {
@@ -10,7 +10,7 @@
         "handlers": {
             "keycloak": {
                 "auth_server": "http://c64.ovh/auth/realms/irispass/",
-                "api_server": "http://irispass-desktop.dev/api/",
+                "api_server": "http://irispass-api.dev/",
                 "osjs_server": "http://localhost:8000"
             }
         },

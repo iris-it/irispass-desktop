@@ -1,4 +1,4 @@
-## IrisPass Os.Js
+## IrisPass Desktop
 
 Os Js est la plateforme web pour faire du bureau virtuel
 Codé en js avec node.js, le code est relativement simple a comprendre
@@ -21,68 +21,56 @@ La doc est complète et le must c'est d'aller ici et de poser les questions a An
 hop hop hop plus rien à faire ici, let's code !
 
 ## Install
-Cloner Os.Js dans un dossier pour avoir la base du code
-
-- `git clone https://github.com/andersevenrud/OS.js-v2.git`
-
-dans le repertoire d'OS.js-v2 lancer ces commandes :
-- `npm install `
-- `npm install node-mysql bcryptjs`
-- `npm install -g supervisor`
-- `.\bin\create-windows-symlinks.cmd`
-- `grunt watch` et laisser tourner la commande
-- `.\bin\win-start-dev.cmd` a lancer dans un autre terminal pour lancer le serveur nodejs
-
 Cloner ce repository
 
-- `git clone https://github.com/Bouhnosaure/IrisPass-OsJs.git`
+- `git clone https://github.com/iris-it/irispass-desktop.git`
 
-Modifier le fichier conf.json pour que l'attribut project, corresponde au chemin vers le repertoire d'oj.js
-lancer ces commandes :
-- `npm install`
-- `grunt watch` à laisser tourner
+dans le repertoire tout juste cloné lancer ces commandes :
+```
+#initialize and get dependencies
+git pull && git submodule init && git submodule update && git submodule status
 
+# We get the latest updates from os.js
+git submodule foreach git pull origin master
 
-Pour de la simple edition de theme sans code js (api / server) modifier ce fichier
-- `.\override\src\conf\900-custom.json`
-passer de `mysql` à `demo`
+# install the dependencies of the project
+npm install
 
+# make the override from the project to os.js
+grunt build
+
+# no comment
+cd osjs
+
+# install the dependencies of os.js
+npm install
+npm install node-mysql bcryptjs node-rest-client
+git clone https://github.com/gildas-lormeau/zip.js.git vendor/zip.js
+
+# build os.js
+grunt
+
+./bin/start-dev.sh #on linux
+./bin/win-start-dev.cmd #on windows
+```
+
+Mais cela ne suffira pas !
+
+Il faut initialiser l'api et la rendre disponible
+
+Faites donc pointer un apache sur le repertoire public qui est dans `app/public`
+
+enfin ajustez les paramètres dans le .env du dossier app
+
+Migrez la base de données avec `php artisan migrate` dans le repertoire app
+
+Puis si vous avez keycloak ( obligatoire ) configurez le .env avec les bonnes données
+
+Ah et oui n'oubliez pas les public.key et private.key dans le dossier storage !
+
+Ces clés vont permettre de valider les JWT en provenance de os.js et de toute autre application :)
 
 et se rendre sur [cette page](http://localhost:8000)
-
-## Develop and push changes
-
-In coming !
-
-## Overrider
-This project was created in order to override projects witout touching sources manually
-
-So if you need to keep the source you've modified in a directory use this project
-
-For instance, you need to modify or adapt an opensource project but you wont make a fork because the project is update everyday,
-just fork this project, update the conf.json to make the "project" attribute matching you root project like /var/www/mycoolproject
-create the tree for your file like so :
-
-```
-The project which needs modifications
-└── src
-    ├── AnotherFile.php
-    └── aSubdir
-        └── AnotherFile.html
-```
-
-If you need to update AnotherFile.html, create the tree and copy the file.
-
-```
-└── override ( this dir is in the project )
-    └── src
-        └── subdir
-            └── AnotherFile.html
-```
-
-after, launch `grunt copy`
-
-or `grunt watch` if you are brave enough
 
 And Voilà !
 
