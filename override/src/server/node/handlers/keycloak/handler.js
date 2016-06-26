@@ -73,7 +73,7 @@
         rest.get(api_server + "me", args, function (data, response) {
 
             if (invalidRequest(response)) {
-                onerror(response.statusMessage, callback);
+                onerror(response.statusMessage);
                 return;
             }
 
@@ -145,10 +145,18 @@
     };
 
     /////////////////////////////////////////////////////////////////////////////
+    // VFS Methods (override)
+    /////////////////////////////////////////////////////////////////////////////
+
+
+    /////////////////////////////////////////////////////////////////////////////
     // VFS
     /////////////////////////////////////////////////////////////////////////////
 
     var VFS = {
+        // getRealPath: function (server, path) {
+        //     server.handler.instance._vfs.getRealPath = getRealPathCustom;
+        // },
         scandir: function (server, args, callback) {
             server.handler.instance._vfs.scandir(server, args, function (err, result) {
                 callback(err, result);
@@ -206,6 +214,37 @@
          */
         KeycloaklHandler.prototype.checkPackagePrivilege = function (server, packageName, callback) {
             this._checkHasSession(server, callback);
+        };
+
+        KeycloaklHandler.prototype.onVFSRequest = function (server, vfsMethod, vfsArguments, callback) {
+
+            if (['scandir', 'exists'].indexOf(vfsMethod) !== -1) {
+                callback();
+            }
+
+            var token = server.request.headers.authorization;
+
+            var args = {
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                data: {
+                    method: vfsMethod,
+                    args: vfsArguments
+                }
+            };
+
+            rest.post(api_server + "vfs/update", args, function (data, response) {
+                if (invalidRequest(response)) {
+                    onerror(response.statusMessage);
+                    callback(response.statusMessage, false);
+                    return;
+                }
+
+                callback();
+            });
+
         };
 
         return new KeycloaklHandler();
