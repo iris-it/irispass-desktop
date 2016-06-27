@@ -195,13 +195,9 @@
             localStorage.setItem('token', keycloak.token);
 
             self.login(function (error, result) {
-                if ( error ) {
-                    callback(error);
-                } else {
-                    self.onLogin(result, function () {
-                        callback();
-                    });
-                }
+                self.onLogin(result, function () {
+                    callback();
+                });
             });
 
         }).error(function (error) {

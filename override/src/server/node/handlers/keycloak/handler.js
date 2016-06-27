@@ -87,7 +87,7 @@
                     id: data.sub,
                     username: data.preferred_username,
                     name: data.given_name,
-                    groups: groups
+                    groups: groups.osjs.roles
                 },
                 userSettings: settings
             }, callback);
