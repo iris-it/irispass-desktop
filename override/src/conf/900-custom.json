@@ -3,7 +3,22 @@
     "client": {
         "auth_server": "http://c64.ovh/auth/realms/irispass/",
         "api_server": "http://irispass-api.dev/",
-        "osjs_server": "http://localhost:8000"
+        "osjs_server": "http://localhost:8000",
+        "VFS": {
+            "Home": "home:///",
+            "Mountpoints": {
+                "home": {
+                    "enabled": true,
+                    "icon": "places/folder_home.png",
+                    "description": "Home"
+                },
+                "groups": {
+                    "enabled": true,
+                    "description": "Groupes",
+                    "icon": "places/folder-publicshare.png"
+                }
+            }
+        }
     },
     "server": {
         "tmpdir": "C:/laragon/www/VFS/tmp",
@@ -17,6 +32,7 @@
         "vfs": {
             "homes": "C:/laragon/www/VFS/home",
             "mounts": {
+                "groups": "C:/laragon/www/VFS/groups",
                 "shared": "C:/laragon/www/VFS/public"
             }
         }

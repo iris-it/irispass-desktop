@@ -30,7 +30,7 @@
  * @author  Anders Evenrud <andersevenrud@gmail.com>
  * @licence Simplified BSD License
  */
-(function (Client) {
+(function (Client, _path) {
     'use strict';
 
     var rest = new Client();
@@ -47,8 +47,9 @@
         return response.statusCode != 200;
     };
 
-    var onerror = function (err) {
+    var onerror = function (err, callback) {
         console.error(err.toString());
+        callback(err.toString());
     };
 
     /////////////////////////////////////////////////////////////////////////////
@@ -73,7 +74,7 @@
         rest.get(api_server + "me", args, function (data, response) {
 
             if (invalidRequest(response)) {
-                onerror(response.statusMessage);
+                onerror(response.statusMessage, callback);
                 return;
             }
 
@@ -112,7 +113,7 @@
         rest.put(api_server + "settings", args, function (data, response) {
 
             if (invalidRequest(response)) {
-                onerror(response.statusMessage);
+                onerror(response.statusMessage, callback);
                 return;
             }
 
@@ -157,11 +158,95 @@
         // getRealPath: function (server, path) {
         //     server.handler.instance._vfs.getRealPath = getRealPathCustom;
         // },
+
         scandir: function (server, args, callback) {
             server.handler.instance._vfs.scandir(server, args, function (err, result) {
-                callback(err, result);
+
+                AUTHORIZATION.getGroupsFromUser(server, function (err, groups) {
+
+                    AUTHORIZATION.filterListOfFiles(result, groups, function (err, files) {
+                        if (err) {
+                            callback(err);
+                            return;
+                        }
+                        callback(err, files);
+                    });
+
+                });
+
             });
         }
+    };
+
+    /////////////////////////////////////////////////////////////////////////////
+    // USER AUTHORIZATION
+    /////////////////////////////////////////////////////////////////////////////
+
+    var AUTHORIZATION = {
+
+        getGroupsFromUser: function (server, cb) {
+
+            var token = server.request.headers.authorization;
+
+            var args = {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            };
+            rest.get(api_server + "me/groups", args, function (data, response) {
+
+                if (invalidRequest(response)) {
+                    onerror(response.statusMessage, cb);
+                    return;
+                }
+
+                var groups = [''];
+
+                if (data[0]) {
+                    data.forEach(function (group) {
+                        groups.push(group.realname);
+                    });
+                }
+
+                cb(false, groups);
+            });
+        },
+
+        checkAgainstProtocolGroups: function (protocol, path, method, cb) {
+            //here i check the fact that an user cant make some action in the base dir, the regex is ugly ( need to rewrite )
+            if (protocol === 'groups' && path.match(/^[\\]?[\/]*[\w\s\u00C0-\u017F!@#\$%\^\&*\)\(+=._-]*$/g) !== null && ['delete', 'mkdir', 'move', 'write'].indexOf(method) !== -1) {
+                //you can't delete, create or rename files here (trad)
+                cb('Vous ne pouvez pas supprimer, créer ou renommer de fichiers ici.');
+            } else {
+                cb(false);
+            }
+        },
+
+        filterListOfFiles: function (files, groups, cb) {
+            // i filter a list of files against a array of authorized folders
+            var results = files.filter(function (file) {
+
+                console.log(file);
+
+                if (file.path.replace(/^(.*)\:\/\/(.*)/, '$1') === "groups") {
+                    var forward = (file.path.replace(/^(.*)\:\/\/(.*)/, '$2').match(/\//g) || []).length;
+                    if (forward === 1) {
+                        return groups.indexOf(file.filename) !== -1 || file.type == "file"
+                    }
+                }
+
+                return true;
+            });
+
+            results.forEach(function (file) {
+                if (file.path.replace(/^(.*)\:\/\/(.*)/, '$1') === "groups") {
+                    file.filename = file.filename.replace(/^(.*)\#(.*)/g, '$2');
+                }
+            });
+
+            cb(false, results);
+        }
+
     };
 
     /////////////////////////////////////////////////////////////////////////////
@@ -192,62 +277,70 @@
         };
 
 
-        /**
-         * By default OS.js will check src/conf for group permissions.
-         * This overrides and leaves no checks (full access)
-         */
-        KeycloaklHandler.prototype.checkAPIPrivilege = function (server, privilege, callback) {
-            this._checkHasSession(server, callback);
-        };
+        KeycloaklHandler.prototype._checkHasVFSPrivilege = function (server, method, args, callback) {
+            var self = this;
 
-        /**
-         * By default OS.js will check src/conf for group permissions.
-         * This overrides and leaves no checks (full access)
-         */
-        KeycloaklHandler.prototype.checkVFSPrivilege = function (server, method, args, callback) {
-            this._checkHasSession(server, callback);
-        };
-
-        /**
-         * By default OS.js will check src/conf for group permissions.
-         * This overrides and leaves no checks (full access)
-         */
-        KeycloaklHandler.prototype.checkPackagePrivilege = function (server, packageName, callback) {
-            this._checkHasSession(server, callback);
-        };
-
-        KeycloaklHandler.prototype.onVFSRequest = function (server, vfsMethod, vfsArguments, callback) {
-
-            if (['scandir', 'exists'].indexOf(vfsMethod) !== -1) {
-                callback();
-            }
-
-            var token = server.request.headers.authorization;
-
-            var args = {
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + token
-                },
-                data: {
-                    method: vfsMethod,
-                    args: vfsArguments
-                }
-            };
-
-            rest.post(api_server + "vfs/update", args, function (data, response) {
-                if (invalidRequest(response)) {
-                    onerror(response.statusMessage);
-                    callback(response.statusMessage, false);
+            DefaultHandler.prototype._checkHasVFSPrivilege.call(this, server, method, args, function (err) {
+                if (err) {
+                    callback(err);
                     return;
                 }
 
-                callback();
-            });
+                //definitions of many variables ( you don't say .. )
+                var mount = self.instance.vfs.getRealPath(server, args.path || args.src);
+                var path = mount.path;
+                var protocol = mount.protocol.replace(/\:\/\/$/, ''); // ex: "home" if path was home:///something/or/other
+                var path_base = _path.normalize(mount.path).replace(/\\/g, '/').split("/")[1];
 
+                //check for actions in the root of the mountpoint
+                AUTHORIZATION.checkAgainstProtocolGroups(protocol, path, method, function (err) {
+                    if (err) {
+                        callback(err);
+                        return;
+                    }
+
+                    //check if user has access to a server group
+                    AUTHORIZATION.getGroupsFromUser(server, function (err, groups) {
+                        if (err) {
+                            callback(err);
+                            return;
+                        }
+
+                        if (protocol === 'groups' && groups.indexOf(path_base) === -1) {
+                            // the folder ----- is private (trad)
+                            callback('Le dossier ' + path_base + ' est privé');
+                        } else {
+                            callback(false);
+                        }
+
+                    });
+                });
+            });
+        };
+
+        KeycloaklHandler.prototype.setUserData = function (server, data, callback) {
+            if (data === null) {
+                server.request.session.set('id', null);
+                server.request.session.set('username', null);
+                server.request.session.set('groups', null);
+            } else {
+                server.request.session.set('id', data.id);
+                server.request.session.set('username', data.username);
+                server.request.session.set('groups', JSON.stringify(data.groups));
+            }
+
+            callback(false, true);
+        };
+
+        KeycloaklHandler.prototype.getHomePath = function (server) {
+            var userdir = server.request.session.get('id');
+            if (!userdir) {
+                throw 'No user session was found';
+            }
+            return _path.join(server.config.vfs.homes, userdir);
         };
 
         return new KeycloaklHandler();
     };
 
-})(require('node-rest-client').Client);
+})(require('node-rest-client').Client, require('path'));
