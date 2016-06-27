@@ -4,6 +4,7 @@
         "auth_server": "http://c64.ovh/auth/realms/irispass/",
         "api_server": "http://irispass-api.dev/",
         "osjs_server": "http://localhost:8000",
+        "client_id": "irispass-desktop",
         "VFS": {
             "Home": "home:///",
             "Mountpoints": {
@@ -26,7 +27,8 @@
             "keycloak": {
                 "auth_server": "http://c64.ovh/auth/realms/irispass/",
                 "api_server": "http://irispass-api.dev/",
-                "osjs_server": "http://localhost:8000"
+                "osjs_server": "http://localhost:8000",
+                "client_id": "osjs"
             }
         },
         "vfs": {
