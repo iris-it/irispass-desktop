@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 
-#initialize and get dependencies
-git pull && git submodule init && git submodule update && git submodule status
+rm -rf osjs
 
-# We get the latest updates from os.js
-git submodule foreach git pull origin master
+git clone https://github.com/os-js/OS.js.git osjs
 
 # install the dependencies of the project
 npm install
@@ -22,5 +20,3 @@ git clone https://github.com/gildas-lormeau/zip.js.git vendor/zip.js
 
 # build os.js
 grunt
-
-./bin/start-dev.sh
