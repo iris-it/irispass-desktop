@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+git init
+
+git remote add origin 'https://github.com/iris-it/irispass-desktop.git'
+
 #initialize and get dependencies
 git pull && git submodule init && git submodule update && git submodule status
 
