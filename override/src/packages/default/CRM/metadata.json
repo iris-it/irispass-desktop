@@ -1,11 +1,15 @@
 {
-  "className":  "ApplicationCRM",
-  "name":       "CRM",
-  "mime":       null,
-  "icon":       "categories/applications-system.png",
-  "preload":    [
-    {"src": "main.js", "type": "javascript"}
-  ]
+    "className": "ApplicationCRM",
+    "category": "office",
+    "name": "CRM",
+    "mime": null,
+    "icon": "categories/applications-system.png",
+    "preload": [
+        {
+            "src": "main.js",
+            "type": "javascript"
+        }
+    ]
 }
 
 
