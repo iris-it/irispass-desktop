@@ -16,9 +16,7 @@ grunt build
 cd osjs
 
 # install the dependencies of os.js
-npm install
-npm install node-mysql bcryptjs node-rest-client
-git clone https://github.com/gildas-lormeau/zip.js.git vendor/zip.js
+npm install && npm install node-mysql bcryptjs node-rest-client &&git clone https://github.com/gildas-lormeau/zip.js.git vendor/zip.js
 
 # build os.js
 grunt

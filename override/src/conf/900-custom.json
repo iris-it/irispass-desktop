@@ -1,42 +1,59 @@
 {
-    "handler": "keycloak",
-    "client": {
+  "handler": "keycloak",
+  "client": {
+    "auth_server": "http://c64.ovh/auth/realms/irispass/",
+    "api_server": "http://irispass-admin.dev/api/",
+    "osjs_server": "http://localhost:8000",
+    "client_id": "irispass-desktop",
+    "VFS": {
+      "Home": "home:///",
+      "Mountpoints": {
+        "home": {
+          "enabled": true,
+          "transport": "Irispass",
+          "icon": "places/folder_home.png",
+          "description": "Home",
+          "options": {
+            "url": "http://irispass-admin.dev/api/filesystem"
+          }
+        },
+        "groups": {
+          "enabled": true,
+          "transport": "Irispass",
+          "description": "Groupes",
+          "icon": "places/folder-publicshare.png",
+          "options": {
+            "url": "http://irispass-admin.dev/api/filesystem"
+          }
+        },
+        "shared": {
+          "enabled": true,
+          "transport": "Irispass",
+          "description": "Public",
+          "icon": "places/folder-publicshare.png",
+          "options": {
+            "url": "http://irispass-admin.dev/api/filesystem"
+          }
+        }
+      }
+    }
+  },
+  "server": {
+    "tmpdir": "C:/laragon/www/VFS/tmp",
+    "handlers": {
+      "keycloak": {
         "auth_server": "http://c64.ovh/auth/realms/irispass/",
         "api_server": "http://irispass-admin.dev/api/",
         "osjs_server": "http://localhost:8000",
-        "client_id": "irispass-desktop",
-        "VFS": {
-            "Home": "home:///",
-            "Mountpoints": {
-                "home": {
-                    "enabled": true,
-                    "icon": "places/folder_home.png",
-                    "description": "Home"
-                },
-                "groups": {
-                    "enabled": true,
-                    "description": "Groupes",
-                    "icon": "places/folder-publicshare.png"
-                }
-            }
-        }
+        "client_id": "osjs"
+      }
     },
-    "server": {
-        "tmpdir": "C:/laragon/www/VFS/tmp",
-        "handlers": {
-            "keycloak": {
-                "auth_server": "http://c64.ovh/auth/realms/irispass/",
-                "api_server": "http://irispass-admin.dev/api/",
-                "osjs_server": "http://localhost:8000",
-                "client_id": "osjs"
-            }
-        },
-        "vfs": {
-            "homes": "C:/laragon/www/VFS/home",
-            "mounts": {
-                "groups": "C:/laragon/www/VFS/groups",
-                "shared": "C:/laragon/www/VFS/public"
-            }
-        }
+    "vfs": {
+      "homes": "C:/laragon/www/VFS/home",
+      "mounts": {
+        "groups": "C:/laragon/www/VFS/groups",
+        "shared": "C:/laragon/www/VFS/public"
+      }
     }
+  }
 }

@@ -27,25 +27,8 @@
  * @author  Anders Evenrud <andersevenrud@gmail.com>
  * @licence Simplified BSD License
  */
-(function (Utils, API) {
+(function (Utils, API, VFS) {
     'use strict';
-
-    window.OSjs = window.OSjs || {};
-    OSjs.VFS = OSjs.VFS || {};
-    OSjs.VFS.Transports = OSjs.VFS.Transports || {};
-
-    /*
-     * THIS IS AN EXPERIMENTAL WEB TRANSPORT MODULE FOR OS.js VFS
-     *
-     * IT IS READ-ONLY!
-     *
-     * To make this work you *will need* CORS support!
-     *
-     * scandir() works by loading a file named `_scandir.json` in the
-     * requested folder.
-     *
-     * Example _scandir.json file in doc/vfs/web/_scandir.json
-     */
 
     /////////////////////////////////////////////////////////////////////////////
     // HELPERS
@@ -56,10 +39,6 @@
         var url = makeUrl(item) + '/' + func;
 
         var params = makeParameters(item);
-
-        console.log('DEBUUUUUUUUUUUUUUUUUUUUUUG');
-        console.log(params);
-        console.log('DEBUUUUUUUUUUUUUUUUUUUUUUG');
 
         var bearer = {
             "Authorization": "Bearer " + localStorage.getItem('token')
@@ -93,38 +72,16 @@
     var Transport = {
         scandir: function (item, callback, options) {
 
-            var root = OSjs.VFS.getRootFromPath(item.path);
-
             httpCall('scandir', item, function (error, response) {
 
                 var list = [];
 
                 if (!error) {
-                    var json = null;
-
-                    try {
-                        json = JSON.parse(response);
-                    } catch (e) {
-
-                    }
-
-                    if (json !== null) {
-                        list = json.map(function (iter) {
-                            iter.path = root + iter.path.replace(/^\//, '');
-                            return iter;
-                        });
-
-                        var rel = OSjs.VFS.getRelativeURL(item.path);
-                        if (rel !== '/') {
-                            list.unshift({
-                                filename: '..',
-                                path: Utils.dirname(item.path),
-                                type: 'dir',
-                                size: 0
-                            });
-                        }
-                    }
+                    response.result.forEach(function (iter) {
+                        list.push(new VFS.File(iter));
+                    });
                 }
+
                 callback(error, list);
             });
         },
@@ -162,29 +119,28 @@
     // WRAPPERS
     /////////////////////////////////////////////////////////////////////////////
 
-
     function makePath(file) {
-        var rel = OSjs.VFS.getRelativeURL(file.path);
-        var moduleName = OSjs.VFS.getModuleFromPath(file.path);
-        var module = OSjs.VFS.Modules[moduleName];
+        var mm = OSjs.Core.getMountManager();
+        var rel = mm.getPathProtocol(file.path);
+        var module = mm.getModuleFromPath(file.path, false, true);
         var base = (module.options || {}).url;
-
         return base + rel.replace(/^\/+/, '/');
     }
 
     function makeUrl(file) {
-        var moduleName = OSjs.VFS.getModuleFromPath(file.path);
-        var module = OSjs.VFS.Modules[moduleName];
+        var mm = OSjs.Core.getMountManager();
+        var moduleName = mm.getModuleFromPath(file.path);
+        var module = mm.getModuleFromPath(file.path, false, true);
         var base = (module.options || {}).url;
 
         return base + '/' + moduleName;
     }
 
     function makeParameters(file) {
-        var root = OSjs.VFS.getRootFromPath(file.path);
-        var rel = OSjs.VFS.getRelativeURL(file.path);
-        var moduleName = OSjs.VFS.getModuleFromPath(file.path);
-        var module = OSjs.VFS.Modules[moduleName];
+        var mm = OSjs.Core.getMountManager();
+        var root = mm.getRootFromPath(file.path);
+        var rel = file.path.replace(/^[A-z0-9\-_]+\:\/\/\/(.*)$/, '$1');
+        var moduleName = mm.getModuleFromPath(file.path);
 
         return {
             root: root,
@@ -202,4 +158,4 @@
         path: makePath
     };
 
-})(OSjs.Utils, OSjs.API);
+})(OSjs.Utils, OSjs.API, OSjs.VFS);

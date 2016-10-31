@@ -38,9 +38,6 @@
 (function (API, Utils, VFS) {
     'use strict';
 
-    window.OSjs = window.OSjs || {};
-    OSjs.Core = OSjs.Core || {};
-
     var keycloak = null;
 
     /////////////////////////////////////////////////////////////////////////////
@@ -56,11 +53,12 @@
     }
 
     KeycloakHandler.prototype = Object.create(OSjs.Core._Handler.prototype);
+
     KeycloakHandler.constructor = OSjs.Core._Handler;
 
     OSjs.Core._Handler.use.defaults(KeycloakHandler);
 
-    KeycloakHandler.prototype.getAPICallOptions = function() {
+    KeycloakHandler.prototype.getAPICallOptions = function () {
         return {
             requestHeaders: {
                 'Authorization': localStorage.getItem('token')
@@ -173,22 +171,14 @@
 
     };
 
-
-    KeycloakHandler.prototype.onVFSRequest = function (vfsModule, vfsMethod, vfsArguments, callback) {
-
-        //console.log('VFS :: ' + vfsModule + ' :: ' + vfsMethod + ' :: ' + vfsArguments);
-
-        callback();
-    };
-
     OSjs.API.addHook('onShutdown', function () {
-        
+
         var config = API.getConfig();
 
         localStorage.clear();
 
         window.location = config.auth_server + "protocol/openid-connect/logout?redirect_uri=" + encodeURIComponent(config.osjs_server);
-        
+
     });
 
 
