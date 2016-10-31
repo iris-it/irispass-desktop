@@ -134,6 +134,8 @@
             OSjs.Core.getPackageManager().setBlacklist(data.blacklistedPackages);
         }
 
+        this.loggedIn = true;
+
         callback();
     };
 
