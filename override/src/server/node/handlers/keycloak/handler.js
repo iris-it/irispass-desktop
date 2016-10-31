@@ -57,6 +57,7 @@
     /////////////////////////////////////////////////////////////////////////////
 
     var APIUser = function () {
+        
     };
 
     APIUser.login = function (server, login, callback) {

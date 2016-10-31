@@ -60,47 +60,12 @@
 
     OSjs.Core._Handler.use.defaults(KeycloakHandler);
 
-    /**
-     * Calls Normal "Backend"
-     *
-     * @see _Handler::_callAPI()
-     * @see _Handler::_callVFS()
-     * @method  _Handler::__callXHR()
-     */
-    KeycloakHandler.prototype.__callXHR = function (url, args, options, cbSuccess, cbError) {
-        var self = this;
-
-        cbError = cbError || function () {
-                console.warn('Handler::__callXHR()', 'error', arguments);
-            };
-
-        var bearer = {
-            'Authorization': localStorage.getItem('token')
-        };
-
-        var data = {
-            url: url,
-            requestHeaders: bearer,
-            method: 'POST',
-            json: true,
-            body: args,
-            onsuccess: function (/*response, request, url*/) {
-                cbSuccess.apply(self, arguments);
-            },
-            onerror: function (/*error, response, request, url*/) {
-                cbError.apply(self, arguments);
+    KeycloakHandler.prototype.getAPICallOptions = function() {
+        return {
+            requestHeaders: {
+                'Authorization': localStorage.getItem('token')
             }
         };
-
-        if (options) {
-            Object.keys(options).forEach(function (key) {
-                data[key] = options[key];
-            });
-        }
-
-        Utils.ajax(data);
-
-        return true;
     };
 
 
