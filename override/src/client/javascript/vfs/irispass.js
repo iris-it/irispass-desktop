@@ -51,6 +51,7 @@
             json: true,
             url: url,
             onerror: function (error) {
+                console.log(error);
                 callback(error);
             },
             onsuccess: function (response) {
@@ -93,25 +94,76 @@
 
             httpCall('read', item, function (error, response) {
                 if (!error) {
-                    if (options.type === 'text') {
-                        OSjs.VFS.abToText(response, mime, function (error, text) {
-                            callback(error, text);
-                        });
-                        return;
+                    switch (options.type) {
+                        case 'text':
+                            VFS.Helpers.abToText(response, mime, function (error, text) {
+                                callback(error, error ? null : text);
+                            });
+                            break;
+                        case 'datasource':
+                            VFS.Helpers.abToDataSource(response, item.mime, function (error, dataSource) {
+                                callback(error, error ? null : dataSource);
+                            });
+                            break;
+                        case 'blob':
+                            VFS.Helpers.abToBlob(response, item.mime, function (error, blob) {
+                                callback(error, error ? null : blob);
+                            });
+                            break;
+                        case 'json':
+                            VFS.Helpers.abToText(response, item.mime, function (error, text) {
+                                var jsn;
+                                if (typeof text === 'string') {
+                                    try {
+                                        jsn = JSON.parse(text);
+                                    } catch (e) {
+                                        console.warn('VFS::read()', 'readToJSON', e.stack, e);
+                                    }
+                                }
+                                callback(error, error ? null : jsn);
+                            });
+                            break;
+                        default:
+                            return;
+                            break;
                     }
                 }
                 callback(error, response);
             });
         },
 
+        write: function (item, data, callback, options) {
+            //httpCall('PUT', {path: item.path, mime: item.mime, data: data}, callback);
+        },
+
+        copy: function (src, dest, callback) {
+            //httpCall('copy', {path: src.path, dest: dest.path}, callback);
+        },
+
+        move: function (src, dest, callback) {
+            //httpCall('move', {path: src.path, dest: dest.path}, callback);
+        },
+
+        unlink: function (item, callback) {
+            //httpCall('unlink', {path: item.path}, callback);
+        },
+
+        mkdir: function (item, callback) {
+            //httpCall('mkdir', {path: item.path}, callback);
+        },
+
         exists: function (item, callback) {
-            httpCall('exists', item, function (err) {
-                callback(err, err ? false : true);
-            });
+            //httpCall('exists', {path: item.path}, function (error, doc) {
+            //    callback(false, !error);
+            //});
         },
 
         url: function (item, callback, options) {
-            callback(false, makePath(item));
+            //callback(false, OSjs.VFS.Transports.WebDAV.path(item));
+        },
+
+        freeSpace: function (root, callback) {
+            //callback(false, -1);
         }
     };
 
@@ -133,6 +185,7 @@
         var module = mm.getModuleFromPath(file.path, false, true);
         var base = (module.options || {}).url;
 
+        // http://api.server/filesystem/{moduleName}
         return base + '/' + moduleName;
     }
 
@@ -143,9 +196,9 @@
         var moduleName = mm.getModuleFromPath(file.path);
 
         return {
-            root: root,
-            rel: rel,
-            moduleName: moduleName
+            root: root,              // home:// or groups://
+            rel: rel,               // file.doc or dir/file.doc
+            moduleName: moduleName // home, groups or shared
         };
     }
 
