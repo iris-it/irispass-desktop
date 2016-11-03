@@ -149,17 +149,23 @@
         },
 
         mkdir: function (item, callback) {
-            //httpCall('mkdir', {path: item.path}, callback);
+            httpCall('mkdir', {path: item.path}, callback);
+        },
+
+        fileinfo: function (item, callback) {
+            httpCall('fileinfo', item, callback);
         },
 
         exists: function (item, callback) {
-            //httpCall('exists', {path: item.path}, function (error, doc) {
-            //    callback(false, !error);
-            //});
+            httpCall('exists', item, function (error, doc) {
+                callback(false, !error);
+            });
         },
 
         url: function (item, callback, options) {
-            //callback(false, OSjs.VFS.Transports.WebDAV.path(item));
+            httpCall('url', item, function (error, response) {
+                callback(error, response);
+            });
         },
 
         freeSpace: function (root, callback) {
