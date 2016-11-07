@@ -34,11 +34,11 @@
     // HELPERS
     /////////////////////////////////////////////////////////////////////////////
 
-    function httpCall(func, item, callback) {
+    function httpCall(func, item, data, options, callback) {
 
         var url = makeUrl(item) + '/' + func;
 
-        var params = makeParameters(item);
+        var params = makeParameters(item, data, options);
 
         var bearer = {
             "Authorization": "Bearer " + localStorage.getItem('token')
@@ -73,7 +73,7 @@
     var Transport = {
         scandir: function (item, callback, options) {
 
-            httpCall('scandir', item, function (error, response) {
+            httpCall('scandir', item, null, options, function (error, response) {
 
                 var list = [];
 
@@ -92,7 +92,7 @@
 
             var mime = item.mime || 'application/octet-stream';
 
-            httpCall('read', item, function (error, response) {
+            httpCall('read', item, null, options, function (error, response) {
                 if (!error) {
                     switch (options.type) {
                         case 'text':
@@ -133,37 +133,50 @@
         },
 
         write: function (item, data, callback, options) {
-            //httpCall('PUT', {path: item.path, mime: item.mime, data: data}, callback);
+
+            if (typeof data === 'string' && !data.length) {
+                httpCall('write', item, data, options, callback);
+                return;
+            }
+
+            VFS.Helpers.abToDataSource(data, item.mime, function (error, dataSource) {
+                if (error) {
+                    callback(error);
+                    return;
+                }
+
+                httpCall('write', item, dataSource, options, callback);
+            });
         },
 
         copy: function (src, dest, callback) {
-            //httpCall('copy', {path: src.path, dest: dest.path}, callback);
+            httpCall('copy', src, {path: src.path, dest: dest.path}, null, callback);
         },
 
         move: function (src, dest, callback) {
-            //httpCall('move', {path: src.path, dest: dest.path}, callback);
+            httpCall('move', src, {path: src.path, dest: dest.path}, null, callback);
         },
 
         unlink: function (item, callback) {
-            //httpCall('unlink', {path: item.path}, callback);
+            httpCall('unlink', item, null, null, callback);
         },
 
         mkdir: function (item, callback) {
-            httpCall('mkdir', {path: item.path}, callback);
+            httpCall('mkdir', item, null, null, callback);
         },
 
         fileinfo: function (item, callback) {
-            httpCall('fileinfo', item, callback);
+            httpCall('fileinfo', item, null, null, callback);
         },
 
         exists: function (item, callback) {
-            httpCall('exists', item, function (error, doc) {
-                callback(false, !error);
+            httpCall('exists', item, null, null, function (error, response) {
+                callback(false, response.status);
             });
         },
 
         url: function (item, callback, options) {
-            httpCall('url', item, function (error, response) {
+            httpCall('url', item, null, options, function (error, response) {
                 callback(error, response);
             });
         },
@@ -195,7 +208,7 @@
         return base + '/' + moduleName;
     }
 
-    function makeParameters(file) {
+    function makeParameters(file, data, options) {
         var mm = OSjs.Core.getMountManager();
         var root = mm.getRootFromPath(file.path);
         var rel = file.path.replace(/^[A-z0-9\-_]+\:\/\/\/(.*)$/, '$1');
@@ -204,7 +217,9 @@
         return {
             root: root,              // home:// or groups://
             rel: rel,               // file.doc or dir/file.doc
-            moduleName: moduleName // home, groups or shared
+            moduleName: moduleName, // home, groups or shared,
+            data: data,
+            options: options,
         };
     }
 
