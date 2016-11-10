@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-(function (window, undefined) {
+(function( window, undefined ) {
 
   var Keycloak = function (config) {
     if (!(this instanceof Keycloak)) {
@@ -25,23 +25,29 @@
     var kc = this;
     var adapter;
     var refreshQueue = [];
-    var storage;
+    var callbackStorage;
 
     var loginIframe = {
       enable: true,
-      callbackMap: [],
+      callbackList: [],
       interval: 5
     };
 
     kc.init = function (initOptions) {
       kc.authenticated = false;
 
-      storage = new PersistentStorage();
+      callbackStorage = createCallbackStorage();
 
-      if (window.Cordova) {
+      if (initOptions && initOptions.adapter === 'cordova') {
         adapter = loadAdapter('cordova');
-      } else {
+      } else if (initOptions && initOptions.adapter === 'default') {
         adapter = loadAdapter();
+      } else {
+        if (window.Cordova) {
+          adapter = loadAdapter('cordova');
+        } else {
+          adapter = loadAdapter();
+        }
       }
 
       if (initOptions) {
@@ -94,17 +100,17 @@
       var promise = createPromise();
 
       var initPromise = createPromise();
-      initPromise.promise.success(function () {
+      initPromise.promise.success(function() {
         kc.onReady && kc.onReady(kc.authenticated);
         promise.setSuccess(kc.authenticated);
-      }).error(function () {
-        promise.setError();
+      }).error(function(errorData) {
+        promise.setError(errorData);
       });
 
       var configPromise = loadConfig(config);
 
       function onLoad() {
-        var doLogin = function (prompt) {
+        var doLogin = function(prompt) {
           if (!prompt) {
             options.prompt = 'none';
           }
@@ -119,7 +125,7 @@
         switch (initOptions.onLoad) {
           case 'check-sso':
             if (loginIframe.enable) {
-              setupCheckLoginIframe().success(function () {
+              setupCheckLoginIframe().success(function() {
                 checkLoginIframe().success(function () {
                   doLogin(false);
                 }).error(function () {
@@ -148,21 +154,34 @@
           return;
         } else if (initOptions) {
           if (initOptions.token || initOptions.refreshToken) {
-            setToken(initOptions.token, initOptions.refreshToken, initOptions.idToken, false);
-            kc.timeSkew = initOptions.timeSkew || 0;
+            setToken(initOptions.token, initOptions.refreshToken, initOptions.idToken);
 
             if (loginIframe.enable) {
-              setupCheckLoginIframe().success(function () {
+              setupCheckLoginIframe().success(function() {
                 checkLoginIframe().success(function () {
+                  kc.onAuthSuccess && kc.onAuthSuccess();
                   initPromise.setSuccess();
                 }).error(function () {
+                  kc.onAuthError && kc.onAuthError();
                   if (initOptions.onLoad) {
                     onLoad();
+                  } else {
+                    initPromise.setError();
                   }
                 });
               });
             } else {
-              initPromise.setSuccess();
+              kc.updateToken(-1).success(function() {
+                kc.onAuthSuccess && kc.onAuthSuccess();
+                initPromise.setSuccess();
+              }).error(function() {
+                kc.onAuthError && kc.onAuthError();
+                if (initOptions.onLoad) {
+                  onLoad();
+                } else {
+                  initPromise.setError();
+                }
+              });
             }
           } else if (initOptions.onLoad) {
             onLoad();
@@ -175,7 +194,7 @@
       }
 
       configPromise.success(processInit);
-      configPromise.error(function () {
+      configPromise.error(function() {
         promise.setError();
       });
 
@@ -186,7 +205,7 @@
       return adapter.login(options);
     }
 
-    kc.createLoginUrl = function (options) {
+    kc.createLoginUrl = function(options) {
       var state = createUUID();
       var nonce = createUUID();
 
@@ -195,24 +214,31 @@
         redirectUri += (redirectUri.indexOf('?') == -1 ? '?' : '&') + 'prompt=' + options.prompt;
       }
 
-      storage.setItem('oauthState', JSON.stringify({state: state, nonce: nonce, redirectUri: encodeURIComponent(redirectUri)}));
+      callbackStorage.add({ state: state, nonce: nonce, redirectUri: encodeURIComponent(redirectUri) });
 
       var action = 'auth';
       if (options && options.action == 'register') {
         action = 'registrations';
       }
 
+      var scope = (options && options.scope) ? "openid " + options.scope : "openid";
+
       var url = getRealmUrl()
-        + '/protocol/openid-connect/' + action
-        + '?client_id=' + encodeURIComponent(kc.clientId)
-        + '&redirect_uri=' + encodeURIComponent(redirectUri)
-        + '&state=' + encodeURIComponent(state)
-        + '&nonce=' + encodeURIComponent(nonce)
-        + '&response_mode=' + encodeURIComponent(kc.responseMode)
-        + '&response_type=' + encodeURIComponent(kc.responseType);
+          + '/protocol/openid-connect/' + action
+          + '?client_id=' + encodeURIComponent(kc.clientId)
+          + '&redirect_uri=' + encodeURIComponent(redirectUri)
+          + '&state=' + encodeURIComponent(state)
+          + '&nonce=' + encodeURIComponent(nonce)
+          + '&response_mode=' + encodeURIComponent(kc.responseMode)
+          + '&response_type=' + encodeURIComponent(kc.responseType)
+          + '&scope=' + encodeURIComponent(scope);
 
       if (options && options.prompt) {
         url += '&prompt=' + encodeURIComponent(options.prompt);
+      }
+
+      if (options && options.maxAge) {
+        url += '&max_age=' + encodeURIComponent(options.maxAge);
       }
 
       if (options && options.loginHint) {
@@ -223,10 +249,6 @@
         url += '&kc_idp_hint=' + encodeURIComponent(options.idpHint);
       }
 
-      if (options && options.scope) {
-        url += '&scope=' + encodeURIComponent(options.scope);
-      }
-
       if (options && options.locale) {
         url += '&ui_locales=' + encodeURIComponent(options.locale);
       }
@@ -234,14 +256,14 @@
       return url;
     }
 
-    kc.logout = function (options) {
+    kc.logout = function(options) {
       return adapter.logout(options);
     }
 
-    kc.createLogoutUrl = function (options) {
+    kc.createLogoutUrl = function(options) {
       var url = getRealmUrl()
-        + '/protocol/openid-connect/logout'
-        + '?redirect_uri=' + encodeURIComponent(adapter.redirectUri(options, false));
+          + '/protocol/openid-connect/logout'
+          + '?redirect_uri=' + encodeURIComponent(adapter.redirectUri(options, false));
 
       return url;
     }
@@ -250,7 +272,7 @@
       return adapter.register(options);
     }
 
-    kc.createRegisterUrl = function (options) {
+    kc.createRegisterUrl = function(options) {
       if (!options) {
         options = {};
       }
@@ -258,16 +280,16 @@
       return kc.createLoginUrl(options);
     }
 
-    kc.createAccountUrl = function (options) {
+    kc.createAccountUrl = function(options) {
       var url = getRealmUrl()
-        + '/account'
-        + '?referrer=' + encodeURIComponent(kc.clientId)
-        + '&referrer_uri=' + encodeURIComponent(adapter.redirectUri(options));
+          + '/account'
+          + '?referrer=' + encodeURIComponent(kc.clientId)
+          + '&referrer_uri=' + encodeURIComponent(adapter.redirectUri(options));
 
       return url;
     }
 
-    kc.accountManagement = function () {
+    kc.accountManagement = function() {
       return adapter.accountManagement();
     }
 
@@ -276,7 +298,7 @@
       return !!access && access.roles.indexOf(role) >= 0;
     }
 
-    kc.hasResourceRole = function (role, resource) {
+    kc.hasResourceRole = function(role, resource) {
       if (!kc.resourceAccess) {
         return false;
       }
@@ -285,7 +307,7 @@
       return !!access && access.roles.indexOf(role) >= 0;
     }
 
-    kc.loadUserProfile = function () {
+    kc.loadUserProfile = function() {
       var url = getRealmUrl() + '/account';
       var req = new XMLHttpRequest();
       req.open('GET', url, true);
@@ -310,7 +332,7 @@
       return promise.promise;
     }
 
-    kc.loadUserInfo = function () {
+    kc.loadUserInfo = function() {
       var url = getRealmUrl() + '/protocol/openid-connect/userinfo';
       var req = new XMLHttpRequest();
       req.open('GET', url, true);
@@ -335,20 +357,19 @@
       return promise.promise;
     }
 
-    kc.isTokenExpired = function (minValidity) {
+    kc.isTokenExpired = function(minValidity) {
       if (!kc.tokenParsed || (!kc.refreshToken && kc.flow != 'implicit' )) {
         throw 'Not authenticated';
       }
 
-      var expiresIn = kc.tokenParsed['exp'] - (new Date().getTime() / 1000) + kc.timeSkew;
+      var expiresIn = kc.tokenParsed['exp'] - Math.ceil(new Date().getTime() / 1000) + kc.timeSkew;
       if (minValidity) {
         expiresIn -= minValidity;
       }
-
       return expiresIn < 0;
     }
 
-    kc.updateToken = function (minValidity) {
+    kc.updateToken = function(minValidity) {
       var promise = createPromise();
 
       if (!kc.tokenParsed || !kc.refreshToken) {
@@ -358,8 +379,21 @@
 
       minValidity = minValidity || 5;
 
-      var exec = function () {
-        if (!kc.isTokenExpired(minValidity)) {
+      var exec = function() {
+        var refreshToken = false;
+        if (kc.timeSkew == -1) {
+          console.info('Skew ' + kc.timeSkew);
+          refreshToken = true;
+          console.info('[KEYCLOAK] Refreshing token: time skew not set');
+        } else if (minValidity == -1) {
+          refreshToken = true;
+          console.info('[KEYCLOAK] Refreshing token: forced refresh');
+        } else if (kc.isTokenExpired(minValidity)) {
+          refreshToken = true;
+          console.info('[KEYCLOAK] Refreshing token: token expired');
+        }
+
+        if (!refreshToken) {
           promise.setSuccess(false);
         } else {
           var params = 'grant_type=refresh_token&' + 'refresh_token=' + kc.refreshToken;
@@ -371,6 +405,7 @@
             var req = new XMLHttpRequest();
             req.open('POST', url, true);
             req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            req.withCredentials = true;
 
             if (kc.clientId && kc.clientSecret) {
               req.setRequestHeader('Authorization', 'Basic ' + btoa(kc.clientId + ':' + kc.clientSecret));
@@ -383,18 +418,21 @@
             req.onreadystatechange = function () {
               if (req.readyState == 4) {
                 if (req.status == 200) {
+                  console.info('[KEYCLOAK] Token refreshed');
+
                   timeLocal = (timeLocal + new Date().getTime()) / 2;
 
                   var tokenResponse = JSON.parse(req.responseText);
-                  setToken(tokenResponse['access_token'], tokenResponse['refresh_token'], tokenResponse['id_token'], true);
 
-                  kc.timeSkew = Math.floor(timeLocal / 1000) - kc.tokenParsed.iat;
+                  setToken(tokenResponse['access_token'], tokenResponse['refresh_token'], tokenResponse['id_token'], timeLocal);
 
                   kc.onAuthRefreshSuccess && kc.onAuthRefreshSuccess();
                   for (var p = refreshQueue.pop(); p != null; p = refreshQueue.pop()) {
                     p.setSuccess(true);
                   }
                 } else {
+                  console.warn('[KEYCLOAK] Failed to refresh token');
+
                   kc.onAuthRefreshError && kc.onAuthRefreshError();
                   for (var p = refreshQueue.pop(); p != null; p = refreshQueue.pop()) {
                     p.setError(true);
@@ -410,9 +448,9 @@
 
       if (loginIframe.enable) {
         var iframePromise = checkLoginIframe();
-        iframePromise.success(function () {
+        iframePromise.success(function() {
           exec();
-        }).error(function () {
+        }).error(function() {
           promise.setError();
         });
       } else {
@@ -422,9 +460,9 @@
       return promise.promise;
     }
 
-    kc.clearToken = function () {
+    kc.clearToken = function() {
       if (kc.token) {
-        setToken(null, null, null, true);
+        setToken(null, null, null);
         kc.onAuthLogout && kc.onAuthLogout();
         if (kc.loginRequired) {
           kc.login();
@@ -442,7 +480,7 @@
 
     function getOrigin() {
       if (!window.location.origin) {
-        return window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port : '');
+        return window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port: '');
       } else {
         return window.location.origin;
       }
@@ -457,8 +495,9 @@
 
       if (error) {
         if (prompt != 'none') {
-          kc.onAuthError && kc.onAuthError();
-          promise && promise.setError();
+          var errorData = { error: error, error_description: oauth.error_description };
+          kc.onAuthError && kc.onAuthError(errorData);
+          promise && promise.setError(errorData);
         } else {
           promise && promise.setSuccess();
         }
@@ -485,7 +524,7 @@
 
         req.withCredentials = true;
 
-        req.onreadystatechange = function () {
+        req.onreadystatechange = function() {
           if (req.readyState == 4) {
             if (req.status == 200) {
 
@@ -504,18 +543,16 @@
       function authSuccess(accessToken, refreshToken, idToken, fulfillPromise) {
         timeLocal = (timeLocal + new Date().getTime()) / 2;
 
-        setToken(accessToken, refreshToken, idToken, true);
+        setToken(accessToken, refreshToken, idToken, timeLocal);
 
         if ((kc.tokenParsed && kc.tokenParsed.nonce != oauth.storedNonce) ||
-          (kc.refreshTokenParsed && kc.refreshTokenParsed.nonce != oauth.storedNonce) ||
-          (kc.idTokenParsed && kc.idTokenParsed.nonce != oauth.storedNonce)) {
+            (kc.refreshTokenParsed && kc.refreshTokenParsed.nonce != oauth.storedNonce) ||
+            (kc.idTokenParsed && kc.idTokenParsed.nonce != oauth.storedNonce)) {
 
-          console.log('invalid nonce!');
+          console.info('[KEYCLOAK] Invalid nonce, clearing token');
           kc.clearToken();
           promise && promise.setError();
         } else {
-          kc.timeSkew = Math.floor(timeLocal / 1000) - kc.tokenParsed.iat;
-
           if (fulfillPromise) {
             kc.onAuthSuccess && kc.onAuthSuccess();
             promise && promise.setSuccess();
@@ -588,7 +625,7 @@
       return promise.promise;
     }
 
-    function setToken(token, refreshToken, idToken, useTokenTime) {
+    function setToken(token, refreshToken, idToken, timeLocal) {
       if (kc.tokenTimeoutHandle) {
         clearTimeout(kc.tokenTimeoutHandle);
         kc.tokenTimeoutHandle = null;
@@ -607,10 +644,24 @@
         kc.realmAccess = kc.tokenParsed.realm_access;
         kc.resourceAccess = kc.tokenParsed.resource_access;
 
+        if (timeLocal) {
+          kc.timeSkew = Math.floor(timeLocal / 1000) - kc.tokenParsed.iat;
+          console.info('[KEYCLOAK] Estimated time difference between browser and server is ' + kc.timeSkew + ' seconds');
+        } else {
+          kc.timeSkew = -1;
+        }
+
         if (kc.onTokenExpired) {
-          var start = useTokenTime ? kc.tokenParsed.iat : (new Date().getTime() / 1000);
-          var expiresIn = kc.tokenParsed.exp - start;
-          kc.tokenTimeoutHandle = setTimeout(kc.onTokenExpired, expiresIn * 1000);
+          if (kc.timeSkew == -1) {
+            kc.onTokenExpired();
+          } else {
+            var expiresIn = (kc.tokenParsed['exp'] - (new Date().getTime() / 1000) + kc.timeSkew) * 1000;
+            if (expiresIn <= 0) {
+              kc.onTokenExpired();
+            } else {
+              kc.tokenTimeoutHandle = setTimeout(kc.onTokenExpired, expiresIn);
+            }
+          }
         }
 
       } else {
@@ -645,7 +696,8 @@
 
       str = str.replace('/-/g', '+');
       str = str.replace('/_/g', '/');
-      switch (str.length % 4) {
+      switch (str.length % 4)
+      {
         case 0:
           break;
         case 2:
@@ -690,15 +742,11 @@
 
     function parseCallback(url) {
       var oauth = new CallbackParser(url, kc.responseMode).parseUri();
+      var oauthState = callbackStorage.get(oauth.state);
 
-      var oauthState = storage.getItem('oauthState');
-      var sessionState = oauthState && JSON.parse(oauthState);
-
-      if (sessionState && (oauth.code || oauth.error || oauth.access_token || oauth.id_token) && oauth.state && oauth.state == sessionState.state) {
-        storage.removeItem('oauthState');
-
-        oauth.redirectUri = sessionState.redirectUri;
-        oauth.storedNonce = sessionState.nonce;
+      if (oauthState && (oauth.code || oauth.error || oauth.access_token || oauth.id_token)) {
+        oauth.redirectUri = oauthState.redirectUri;
+        oauth.storedNonce = oauthState.nonce;
 
         if (oauth.fragment) {
           oauth.newUrl += '#' + oauth.fragment;
@@ -710,7 +758,7 @@
 
     function createPromise() {
       var p = {
-        setSuccess: function (result) {
+        setSuccess: function(result) {
           p.success = true;
           p.result = result;
           if (p.successCallback) {
@@ -718,7 +766,7 @@
           }
         },
 
-        setError: function (result) {
+        setError: function(result) {
           p.error = true;
           p.result = result;
           if (p.errorCallback) {
@@ -727,7 +775,7 @@
         },
 
         promise: {
-          success: function (callback) {
+          success: function(callback) {
             if (p.success) {
               callback(p.result);
             } else if (!p.error) {
@@ -735,7 +783,7 @@
             }
             return p.promise;
           },
-          error: function (callback) {
+          error: function(callback) {
             if (p.error) {
               callback(p.result);
             } else if (!p.success) {
@@ -764,7 +812,7 @@
       var iframe = document.createElement('iframe');
       loginIframe.iframe = iframe;
 
-      iframe.onload = function () {
+      iframe.onload = function() {
         var realmUrl = getRealmUrl();
         if (realmUrl.charAt(0) === '/') {
           loginIframe.iframeOrigin = getOrigin();
@@ -776,29 +824,34 @@
         setTimeout(check, loginIframe.interval * 1000);
       }
 
-      var src = getRealmUrl() + '/protocol/openid-connect/login-status-iframe.html?client_id=' + encodeURIComponent(kc.clientId) + '&origin=' + getOrigin();
-      iframe.setAttribute('src', src);
+      var src = getRealmUrl() + '/protocol/openid-connect/login-status-iframe.html';
+      iframe.setAttribute('src', src );
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
 
-      var messageCallback = function (event) {
+      var messageCallback = function(event) {
         if (event.origin !== loginIframe.iframeOrigin) {
           return;
         }
-        var data = JSON.parse(event.data);
-        var promise = loginIframe.callbackMap[data.callbackId];
-        delete loginIframe.callbackMap[data.callbackId];
 
-        if ((!kc.sessionId || kc.sessionId == data.session) && data.loggedIn) {
-          promise.setSuccess();
-        } else {
+        if (event.data != "unchanged") {
           kc.clearToken();
-          promise.setError();
+        }
+
+        for (var i = loginIframe.callbackList.length - 1; i >= 0; --i) {
+          var promise = loginIframe.callbackList[i];
+          if (event.data == "unchanged") {
+            promise.setSuccess();
+          } else {
+            promise.setError();
+          }
+          loginIframe.callbackList.splice(i, 1);
         }
       };
+
       window.addEventListener('message', messageCallback, false);
 
-      var check = function () {
+      var check = function() {
         checkLoginIframe();
         if (kc.token) {
           setTimeout(check, loginIframe.interval * 1000);
@@ -811,12 +864,13 @@
     function checkLoginIframe() {
       var promise = createPromise();
 
-      if (loginIframe.iframe && loginIframe.iframeOrigin) {
-        var msg = {};
-        msg.callbackId = createCallbackId();
-        loginIframe.callbackMap[msg.callbackId] = promise;
+      if (loginIframe.iframe && loginIframe.iframeOrigin ) {
+        var msg = kc.clientId + ' ' + kc.sessionId;
+        loginIframe.callbackList.push(promise);
         var origin = loginIframe.iframeOrigin;
-        loginIframe.iframe.contentWindow.postMessage(JSON.stringify(msg), origin);
+        if (loginIframe.callbackList.length == 1) {
+          loginIframe.iframe.contentWindow.postMessage(msg, origin);
+        }
       } else {
         promise.setSuccess();
       }
@@ -827,27 +881,27 @@
     function loadAdapter(type) {
       if (!type || type == 'default') {
         return {
-          login: function (options) {
+          login: function(options) {
             window.location.href = kc.createLoginUrl(options);
             return createPromise().promise;
           },
 
-          logout: function (options) {
+          logout: function(options) {
             window.location.href = kc.createLogoutUrl(options);
             return createPromise().promise;
           },
 
-          register: function (options) {
+          register: function(options) {
             window.location.href = kc.createRegisterUrl(options);
             return createPromise().promise;
           },
 
-          accountManagement: function () {
+          accountManagement : function() {
             window.location.href = kc.createAccountUrl();
             return createPromise().promise;
           },
 
-          redirectUri: function (options, encodeHash) {
+          redirectUri: function(options, encodeHash) {
             if (arguments.length == 1) {
               encodeHash = true;
             }
@@ -872,7 +926,7 @@
         loginIframe.enable = false;
 
         return {
-          login: function (options) {
+          login: function(options) {
             var promise = createPromise();
 
             var o = 'location=no';
@@ -885,7 +939,7 @@
 
             var completed = false;
 
-            ref.addEventListener('loadstart', function (event) {
+            ref.addEventListener('loadstart', function(event) {
               if (event.url.indexOf('http://localhost') == 0) {
                 var callback = parseCallback(event.url);
                 processCallback(callback, promise);
@@ -894,7 +948,7 @@
               }
             });
 
-            ref.addEventListener('loaderror', function (event) {
+            ref.addEventListener('loaderror', function(event) {
               if (!completed) {
                 if (event.url.indexOf('http://localhost') == 0) {
                   var callback = parseCallback(event.url);
@@ -911,7 +965,7 @@
             return promise.promise;
           },
 
-          logout: function (options) {
+          logout: function(options) {
             var promise = createPromise();
 
             var logoutUrl = kc.createLogoutUrl(options);
@@ -919,13 +973,13 @@
 
             var error;
 
-            ref.addEventListener('loadstart', function (event) {
+            ref.addEventListener('loadstart', function(event) {
               if (event.url.indexOf('http://localhost') == 0) {
                 ref.close();
               }
             });
 
-            ref.addEventListener('loaderror', function (event) {
+            ref.addEventListener('loaderror', function(event) {
               if (event.url.indexOf('http://localhost') == 0) {
                 ref.close();
               } else {
@@ -934,7 +988,7 @@
               }
             });
 
-            ref.addEventListener('exit', function (event) {
+            ref.addEventListener('exit', function(event) {
               if (error) {
                 promise.setError();
               } else {
@@ -946,27 +1000,27 @@
             return promise.promise;
           },
 
-          register: function () {
+          register : function() {
             var registerUrl = kc.createRegisterUrl();
             var ref = window.open(registerUrl, '_blank', 'location=no');
-            ref.addEventListener('loadstart', function (event) {
+            ref.addEventListener('loadstart', function(event) {
               if (event.url.indexOf('http://localhost') == 0) {
                 ref.close();
               }
             });
           },
 
-          accountManagement: function () {
+          accountManagement : function() {
             var accountUrl = kc.createAccountUrl();
             var ref = window.open(accountUrl, '_blank', 'location=no');
-            ref.addEventListener('loadstart', function (event) {
+            ref.addEventListener('loadstart', function(event) {
               if (event.url.indexOf('http://localhost') == 0) {
                 ref.close();
               }
             });
           },
 
-          redirectUri: function (options) {
+          redirectUri: function(options) {
             return 'http://localhost';
           }
         }
@@ -975,61 +1029,93 @@
       throw 'invalid adapter type: ' + type;
     }
 
-
-    var PersistentStorage = function () {
-      if (!(this instanceof PersistentStorage)) {
-        return new PersistentStorage();
-      }
-      var ps = this;
-      var useCookieStorage = function () {
-        if (typeof localStorage === "undefined") {
-          return true;
-        }
-        try {
-          var key = '@@keycloak-session-storage/test';
-          localStorage.setItem(key, 'test');
-          localStorage.removeItem(key);
-          return false;
-        } catch (err) {
-          // Probably in Safari "private mode" where localStorage
-          // quota is 0, or quota exceeded. Switching to cookie
-          // storage.
-          return true;
-        }
+    var LocalStorage = function() {
+      if (!(this instanceof LocalStorage)) {
+        return new LocalStorage();
       }
 
-      ps.setItem = function (key, value) {
-        if (useCookieStorage()) {
-          setCookie(key, value, cookieExpiration(5));
-        } else {
-          localStorage.setItem(key, value);
-        }
-      }
+      localStorage.setItem('kc-test', 'test');
+      localStorage.removeItem('kc-test');
 
-      ps.getItem = function (key) {
-        if (useCookieStorage()) {
-          return getCookie(key);
-        }
-        return localStorage.getItem(key);
-      }
+      var cs = this;
 
-      ps.removeItem = function (key) {
-        if (typeof localStorage !== "undefined") {
-          try {
-            // Always try to delete from localStorage.
-            localStorage.removeItem(key);
-          } catch (err) {
+      function clearExpired() {
+        var time = new Date().getTime();
+        for (var i = 1; i <= localStorage.length; i++)  {
+          var key = localStorage.key(i);
+          if (key && key.indexOf('kc-callback-') == 0) {
+            var value = localStorage.getItem(key);
+            if (value) {
+              try {
+                var expires = JSON.parse(value).expires;
+                if (!expires || expires < time) {
+                  localStorage.removeItem(key);
+                }
+              } catch (err) {
+                localStorage.removeItem(key);
+              }
+            }
           }
         }
-        // Always remove the cookie.
-        setCookie(key, '', cookieExpiration(-100));
       }
+
+      cs.get = function(state) {
+        if (!state) {
+          return;
+        }
+
+        var key = 'kc-callback-' + state;
+        var value = localStorage.getItem(key);
+        if (value) {
+          localStorage.removeItem(key);
+          value = JSON.parse(value);
+        }
+
+        clearExpired();
+        return value;
+      };
+
+      cs.add = function(state) {
+        clearExpired();
+
+        var key = 'kc-callback-' + state.state;
+        state.expires = new Date().getTime() + (60 * 60 * 1000);
+        localStorage.setItem(key, JSON.stringify(state));
+      };
+    };
+
+    var CookieStorage = function() {
+      if (!(this instanceof CookieStorage)) {
+        return new CookieStorage();
+      }
+
+      var cs = this;
+
+      cs.get = function(state) {
+        if (!state) {
+          return;
+        }
+
+        var value = getCookie('kc-callback-' + state);
+        setCookie('kc-callback-' + state, '', cookieExpiration(-100));
+        if (value) {
+          return JSON.parse(value);
+        }
+      };
+
+      cs.add = function(state) {
+        setCookie('kc-callback-' + state.state, JSON.stringify(state), cookieExpiration(60));
+      };
+
+      cs.removeItem = function(key) {
+        setCookie(key, '', cookieExpiration(-100));
+      };
 
       var cookieExpiration = function (minutes) {
         var exp = new Date();
-        exp.setTime(exp.getTime() + (minutes * 60 * 1000));
+        exp.setTime(exp.getTime() + (minutes*60*1000));
         return exp;
-      }
+      };
 
       var getCookie = function (key) {
         var name = key + '=';
@@ -1044,22 +1130,31 @@
           }
         }
         return '';
-      }
+      };
 
       var setCookie = function (key, value, expirationDate) {
         var cookie = key + '=' + value + '; '
-          + 'expires=' + expirationDate.toUTCString() + '; ';
+            + 'expires=' + expirationDate.toUTCString() + '; ';
         document.cookie = cookie;
       }
+    };
+
+    function createCallbackStorage() {
+      try {
+        return new LocalStorage();
+      } catch (err) {
+      }
+
+      return new CookieStorage();
     }
 
-    var CallbackParser = function (uriToParse, responseMode) {
+    var CallbackParser = function(uriToParse, responseMode) {
       if (!(this instanceof CallbackParser)) {
         return new CallbackParser(uriToParse, responseMode);
       }
       var parser = this;
 
-      var initialParse = function () {
+      var initialParse = function() {
         var baseUri = null;
         var queryString = null;
         var fragmentString = null;
@@ -1081,10 +1176,10 @@
           fragmentString = uriToParse.substring(fragmentIndex + 1);
         }
 
-        return {baseUri: baseUri, queryString: queryString, fragmentString: fragmentString};
+        return { baseUri: baseUri, queryString: queryString, fragmentString: fragmentString };
       }
 
-      var parseParams = function (paramString) {
+      var parseParams = function(paramString) {
         var result = {};
         var params = paramString.split('&');
         for (var i = 0; i < params.length; i++) {
@@ -1096,10 +1191,10 @@
         return result;
       }
 
-      var handleQueryParam = function (paramName, paramValue, oauth) {
-        var supportedOAuthParams = ['code', 'error', 'state'];
+      var handleQueryParam = function(paramName, paramValue, oauth) {
+        var supportedOAuthParams = [ 'code', 'state', 'error', 'error_description' ];
 
-        for (var i = 0; i < supportedOAuthParams.length; i++) {
+        for (var i = 0 ; i< supportedOAuthParams.length ; i++) {
           if (paramName === supportedOAuthParams[i]) {
             oauth[paramName] = paramValue;
             return true;
@@ -1109,7 +1204,7 @@
       }
 
 
-      parser.parseUri = function () {
+      parser.parseUri = function() {
         var parsedUri = initialParse();
 
         var queryParams = {};
@@ -1117,7 +1212,7 @@
           queryParams = parseParams(parsedUri.queryString);
         }
 
-        var oauth = {newUrl: parsedUri.baseUri};
+        var oauth = { newUrl: parsedUri.baseUri };
         for (var param in queryParams) {
           switch (param) {
             case 'redirect_fragment':
@@ -1150,15 +1245,13 @@
 
   }
 
-  if (typeof module === "object" && module && typeof module.exports === "object") {
+  if ( typeof module === "object" && module && typeof module.exports === "object" ) {
     module.exports = Keycloak;
   } else {
     window.Keycloak = Keycloak;
 
-    if (typeof define === "function" && define.amd) {
-      define("keycloak", [], function () {
-        return Keycloak;
-      });
+    if ( typeof define === "function" && define.amd ) {
+      define( "keycloak", [], function () { return Keycloak; } );
     }
   }
-})(window);
+})( window );

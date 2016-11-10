@@ -58,12 +58,30 @@
 
     OSjs.Core._Handler.use.defaults(KeycloakHandler);
 
+
     KeycloakHandler.prototype.getAPICallOptions = function () {
         return {
             requestHeaders: {
                 'Authorization': localStorage.getItem('token')
             }
         };
+    };
+
+    KeycloakHandler.prototype.onVFSRequest = function (vfsModule, vfsMethod, vfsArguments, callback) {
+
+        // console.log('KEYCLOAK::UPDATE TOKEN');
+        //
+        // keycloak.updateToken(5).success(function (refreshed) {
+        //     if (refreshed) {
+        //         console.log('KEYCLOAK::Token was successfully refreshed');
+        //     } else {
+        //         console.log('KEYCLOAK::Token is still valid');
+        //     }
+        // }).error(function () {
+        //     console.log('KEYCLOAK::Failed to refresh the token, or the session has expired');
+        // });
+
+        callback();
     };
 
 

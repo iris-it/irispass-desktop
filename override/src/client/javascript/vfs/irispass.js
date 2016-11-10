@@ -149,12 +149,44 @@
             });
         },
 
+        upload: function (file, dest, callback) {
+
+            console.info('OneDrive::upload()', file, dest);
+
+            var item = new OSjs.VFS.File({
+                filename: file.name,
+                path: Utils.pathJoin((new OSjs.VFS.File(dest)).path, file.name),
+                mime: file.type,
+                size: file.size
+            });
+
+            if (typeof file === 'string' && !file.length) {
+                httpCall('upload', item, file, null, callback);
+                return;
+            }
+
+            VFS.Helpers.abToDataSource(file, item.mime, function (error, dataSource) {
+                if (error) {
+                    callback(error);
+                    return;
+                }
+
+                httpCall('upload', item, dataSource, null, callback);
+            });
+        },
+
         copy: function (src, dest, callback) {
-            httpCall('copy', src, {path: src.path, dest: dest.path}, null, callback);
+            httpCall('copy', src, {
+                src: prepareDataCopyMove(src.path),
+                dest: prepareDataCopyMove(dest.path)
+            }, null, callback);
         },
 
         move: function (src, dest, callback) {
-            httpCall('move', src, {path: src.path, dest: dest.path}, null, callback);
+            httpCall('move', src, {
+                src: prepareDataCopyMove(src.path),
+                dest: prepareDataCopyMove(dest.path)
+            }, null, callback);
         },
 
         unlink: function (item, callback) {
@@ -219,7 +251,21 @@
             rel: rel,               // file.doc or dir/file.doc
             moduleName: moduleName, // home, groups or shared,
             data: data,
-            options: options,
+            options: options
+        };
+    }
+
+    function prepareDataCopyMove(path) {
+        var mm = OSjs.Core.getMountManager();
+        var root = mm.getRootFromPath(path);
+        var rel = path.replace(/^[A-z0-9\-_]+\:\/\/\/(.*)$/, '$1');
+        var moduleName = mm.getModuleFromPath(path);
+
+        return {
+            root: root,              // home:// or groups://
+            rel: rel,               // file.doc or dir/file.doc
+            moduleName: moduleName, // home, groups or shared,
+            path: path
         };
     }
 
