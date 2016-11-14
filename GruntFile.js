@@ -53,7 +53,7 @@ module.exports = function (grunt) {
         },
         concurrent: {
             osjs_dev: {
-                tasks: ['watch', 'subgrunt:grunt_watch_osjs', 'run:dev_server_osjs'],
+                tasks: ['watch', 'run:dev_server_osjs', 'subgrunt:grunt_watch_osjs'],
                 options: {
                     logConcurrentOutput: true
                 }

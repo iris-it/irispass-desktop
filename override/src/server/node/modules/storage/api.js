@@ -37,22 +37,30 @@ var auth_server;
 var api_server;
 var osjs_server;
 
+var getToken = function (http) {
+    if (http.request.headers.authorization !== undefined) {
+        http.session.set('token', http.request.headers.authorization);
+    }
+
+    if (http.session.get('token') !== undefined) {
+        return http.session.get('token');
+    }
+};
+
 module.exports.setSettings = function (http, username, data) {
-
-    var token = http.request.headers.authorization;
-
-    var args = {
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-        },
-        data: {
-            settings: JSON.stringify(data)
-        }
-    };
-
     return new Promise(function (resolve, reject) {
         console.log('Storage::setSettings');
+
+        var args = {
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + getToken(http)
+            },
+            data: {
+                settings: JSON.stringify(data)
+            }
+        };
+
         rest.put(api_server + "settings", args, function (data, response) {
             if (response.statusCode !== 200) {
                 reject(response.statusMessage);
@@ -64,53 +72,30 @@ module.exports.setSettings = function (http, username, data) {
 };
 
 module.exports.getSettings = function (http, username) {
-    var token = http.request.headers.authorization;
-
-    var args = {
-        headers: {
-            "Authorization": "Bearer " + token
-        }
-    };
-
     return new Promise(function (resolve, reject) {
         console.log('Storage::getSettings');
-        rest.get(api_server + "me", args, function (data, response) {
-            if (response.statusCode !== 200) {
-                reject(response.statusMessage);
-            } else {
-                resolve(JSON.parse(data.settings));
-            }
-        });
+        if (http.session.get('settings')) {
+            resolve(JSON.parse(http.session.get('settings')));
+        } else {
+            resolve({});
+        }
     });
 };
 
 module.exports.getGroups = function (http, username) {
-    var token = http.request.headers.authorization;
-
-    var args = {
-        headers: {
-            "Authorization": "Bearer " + token
-        }
-    };
-
     return new Promise(function (resolve, reject) {
         console.log('Storage::getGroups');
-        rest.get(api_server + "me", args, function (data, response) {
-
-            console.log(data);
-
-            if (response.statusCode !== 200) {
-                reject(response.statusMessage);
-            } else {
-                resolve(JSON.parse(data.resource_access));
-            }
-        });
+        if (http.session.get('groups')) {
+            resolve(JSON.parse(http.session.get('groups')).osjs.roles);
+        } else {
+            resolve({});
+        }
     });
 };
 
 module.exports.getBlacklist = function (http, username) {
     return new Promise(function (resolve) {
-        console.log('Storage::getBlacklist');
+        //console.log('Storage::getBlacklist');
         resolve([]);
     });
 };

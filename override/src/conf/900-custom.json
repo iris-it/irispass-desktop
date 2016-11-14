@@ -2,7 +2,6 @@
   "connection": "api",
   "storage": "api",
   "authenticator": "keycloak",
-
   "client": {
     "VFS": {
       "Home": "home:///",
@@ -15,7 +14,7 @@
             "alias": "home:///.desktop",
             "path": "home:///.desktop"
           }
-        }, 
+        },
         "home": {
           "enabled": true,
           "transport": "Irispass",
@@ -52,14 +51,14 @@
         "keycloak": {
           "auth_server": "http://c64.ovh/auth/realms/irispass/",
           "api_server": "http://irispass-admin.dev/api/",
-          "osjs_server": "http://localhost:8000",
+          "osjs_server": "http://localhost:8000"
         }
       },
       "storage": {
         "api": {
           "auth_server": "http://c64.ovh/auth/realms/irispass/",
           "api_server": "http://irispass-admin.dev/api/",
-          "osjs_server": "http://localhost:8000",
+          "osjs_server": "http://localhost:8000"
         }
       }
     }

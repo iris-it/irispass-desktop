@@ -56,10 +56,15 @@ module.exports.login = function (http, data) {
     };
 
     return new Promise(function (resolve, reject) {
+        console.log('Auth::login');
         rest.get(api_server + "me", args, function (data, response) {
             if (response.statusCode !== 200) {
                 reject(response.statusMessage);
             } else {
+
+                http.session.set('groups', data.resource_access);
+                http.session.set('settings', data.settings);
+
                 resolve({
                     id: data.sub,
                     username: data.preferred_username,
@@ -68,7 +73,6 @@ module.exports.login = function (http, data) {
             }
         });
     });
-
 };
 
 /**
