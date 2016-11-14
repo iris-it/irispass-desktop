@@ -24,10 +24,39 @@ module.exports = function (grunt) {
                 expand: true
             }
         },
+        run: {
+            dev_server_osjs: {
+                options: {
+                    cwd: './osjs/bin'
+                },
+                cmd: 'win-start-dev.cmd'
+            }
+        },
+        subgrunt: {
+            grunt_watch_osjs: {
+                options: {
+                    npmInstall: false
+                },
+                projects: {
+                    'osjs': 'watch'
+                }
+            }
+        },
         watch: {
             copy: {
                 files: ['<%= conf.override %>/**'],
-                tasks: ['copy:main', 'copy:dev']
+                tasks: ['copy:main', 'copy:dev'],
+                options: {
+                    spawn: false
+                }
+            }
+        },
+        concurrent: {
+            osjs_dev: {
+                tasks: ['watch', 'subgrunt:grunt_watch_osjs', 'run:dev_server_osjs'],
+                options: {
+                    logConcurrentOutput: true
+                }
             }
         }
     });
@@ -35,7 +64,12 @@ module.exports = function (grunt) {
     // Next one would load plugins
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-watch');
+    grunt.loadNpmTasks('grunt-concurrent');
+    grunt.loadNpmTasks('grunt-subgrunt');
+    grunt.loadNpmTasks('grunt-run');
 
     // Here is where we would define our task
     grunt.registerTask('build', ['copy']);
+    grunt.registerTask('watch', ['watch']);
+    grunt.registerTask('dev', ['concurrent:osjs_dev']);
 };

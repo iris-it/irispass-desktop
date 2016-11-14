@@ -70,7 +70,6 @@
     KeycloakHandler.prototype.onVFSRequest = function (vfsModule, vfsMethod, vfsArguments, callback) {
 
         // console.log('KEYCLOAK::UPDATE TOKEN');
-        //
         // keycloak.updateToken(5).success(function (refreshed) {
         //     if (refreshed) {
         //         console.log('KEYCLOAK::Token was successfully refreshed');
