@@ -4,7 +4,7 @@
 git pull && git submodule init && git submodule update && git submodule status
 
 # We get the latest updates from os.js
-git submodule foreach git pull origin master
+git submodule foreach git pull origin development
 
 # install the dependencies of the project
 npm install

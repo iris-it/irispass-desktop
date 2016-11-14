@@ -70,6 +70,5 @@ module.exports = function (grunt) {
 
     // Here is where we would define our task
     grunt.registerTask('build', ['copy']);
-    grunt.registerTask('watch', ['watch']);
     grunt.registerTask('dev', ['concurrent:osjs_dev']);
 };

@@ -1,13 +1,21 @@
 {
-  "handler": "keycloak",
+  "connection": "api",
+  "storage": "api",
+  "authenticator": "keycloak",
+
   "client": {
-    "auth_server": "http://c64.ovh/auth/realms/irispass/",
-    "api_server": "http://irispass-admin.dev/api/",
-    "osjs_server": "http://localhost:8000",
-    "client_id": "irispass-desktop",
     "VFS": {
       "Home": "home:///",
       "Mountpoints": {
+        "desktop": {
+          "enabled": true,
+          "icon": "places/desktop.png",
+          "description": "Desktop",
+          "options": {
+            "alias": "home:///.desktop",
+            "path": "home:///.desktop"
+          }
+        }, 
         "home": {
           "enabled": true,
           "transport": "Irispass",
@@ -39,20 +47,32 @@
     }
   },
   "server": {
-    "tmpdir": "C:/laragon/www/VFS/tmp",
-    "handlers": {
-      "keycloak": {
-        "auth_server": "http://c64.ovh/auth/realms/irispass/",
-        "api_server": "http://irispass-admin.dev/api/",
-        "osjs_server": "http://localhost:8000",
-        "client_id": "osjs"
+    "modules": {
+      "auth": {
+        "keycloak": {
+          "auth_server": "http://c64.ovh/auth/realms/irispass/",
+          "api_server": "http://irispass-admin.dev/api/",
+          "osjs_server": "http://localhost:8000",
+        }
+      },
+      "storage": {
+        "api": {
+          "auth_server": "http://c64.ovh/auth/realms/irispass/",
+          "api_server": "http://irispass-admin.dev/api/",
+          "osjs_server": "http://localhost:8000",
+        }
       }
-    },
-    "vfs": {
-      "homes": "C:/laragon/www/VFS/home",
-      "mounts": {
-        "groups": "C:/laragon/www/VFS/groups",
-        "shared": "C:/laragon/www/VFS/public"
+    }
+  },
+  "build": {
+    "overlays": {
+      "irispass": {
+        "javascript": [
+          "src/client/javascript/core/auth/keycloak.js",
+          "src/client/javascript/core/connections/api.js",
+          "src/client/javascript/core/storage/api.js",
+          "src/client/javascript/vfs/transports/irispass.js"
+        ]
       }
     }
   }
